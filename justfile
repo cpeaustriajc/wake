@@ -23,6 +23,10 @@ window:
     cargo clippy -p wake-window --all-targets --locked -- -D warnings
     cargo build -p wake-window --locked
 
+# Once per clone: makes git run `just check` before every commit.
+hooks:
+    git config core.hooksPath .githooks
+
 fix:
     cargo fmt
     cargo clippy --all-targets --locked --fix --allow-dirty --allow-staged

@@ -1,0 +1,84 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "ask": [
+      "Edit(/Cargo.toml)",
+      "Bash(cargo add:*)",
+      "Bash(cargo remove:*)",
+      "Edit(clippy.toml)",
+      "Edit(.clippy.toml)",
+      "Edit(rustfmt.toml)",
+      "Edit(.rustfmt.toml)",
+      "Edit(deny.toml)",
+      "Edit(.deny.toml)",
+      "Edit([Jj][Uu][Ss][Tt][Ff][Ii][Ll][Ee])",
+      "Edit(.[Jj][Uu][Ss][Tt][Ff][Ii][Ll][Ee])",
+      "Edit(rust-toolchain)",
+      "Edit(rust-toolchain.toml)",
+      "Edit(.cargo/**)",
+      "Edit(/.githooks/**)",
+      "Edit(/AGENTS.md)",
+      "Edit(/CLAUDE.md)",
+      "Edit(/.claude/settings.json)",
+      "Edit(/.github/workflows/**)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard_tests.py",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard_tests.py",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "edited=$(jq -r '.tool_input.file_path // empty'); case \"$edited\" in *.rs) ;; *) exit 0 ;; esac; cd \"$(dirname \"$edited\")\" 2>/dev/null && cargo locate-project >/dev/null 2>&1 || exit 0; out=$(cargo check --all-targets --message-format=short 2>&1) || { printf '%s\\n' \"$out\" | tail -n 40 >&2; exit 2; }",
+            "timeout": 300
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard_tests.py",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard_tests.py",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "command -v just >/dev/null || { echo \"Stop hook: just is not on PATH. Install it, then run just check.\" >&2; exit 2; }; cd \"$(jq -r '.cwd // empty')\" 2>/dev/null && just --summary >/dev/null 2>&1 || cd \"$CLAUDE_PROJECT_DIR\" || exit 2; out=$(just check 2>&1) || { printf '%s\\n' \"$out\" | tail -n 80 >&2; exit 2; }",
+            "timeout": 900
+          }
+        ]
+      }
+    ]
+  }
+}

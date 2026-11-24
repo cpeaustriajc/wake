@@ -1,0 +1,7 @@
+{
+  "mode": "full",
+  "extra_test_dirs": [],
+  "extra_test_names": [],
+  "shared_files": [],
+  "picked": {"at": "2026-11-24", "by": "T7 (#14): full, so deleting a failing test's assertion asks the owner"}
+}
