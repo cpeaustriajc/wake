@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
 members = ["apps/*", "crates/*"]
-default-members = ["crates/wake"]
+default-members = ["crates/*", "apps/wake", "apps/record-fixtures", "apps/resume-test"]
 
 [workspace.package]
 version = "0.1.0"
@@ -12,6 +12,8 @@ repository = "https://github.com/cpeaustriajc/wake"
 
 [workspace.dependencies]
 wake = { path = "crates/wake", version = "=0.1.0" }
+wake-claude = { path = "crates/wake-claude", version = "=0.1.0" }
+wake-daemon = { path = "crates/wake-daemon", version = "=0.1.0" }
 
 gpui = { version = "0.2.2", git = "https://github.com/zed-industries/zed" }
 gpui_platform = { version = "0.1.0", git = "https://github.com/zed-industries/zed", features = ["font-kit"] }

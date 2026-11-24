@@ -34,3 +34,11 @@ hooks:
 fix:
     cargo fmt
     cargo clippy --all-targets --locked --fix --allow-dirty --allow-staged
+
+resume-test *flags:
+    cargo build --locked -p wake-cli
+    cargo run --locked -p wake-resume-test -- results target/debug/wake {{flags}}
+
+record-fixtures:
+    cargo build --locked -p wake-cli
+    cargo run --locked -p wake-record-fixtures -- crates/wake-claude/tests/fixtures target/debug/wake

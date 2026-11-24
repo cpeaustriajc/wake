@@ -1,0 +1,16 @@
+[package]
+name = "wake-record-fixtures"
+description = "Re-records the claude stream-json fixtures from a real run"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+wake-claude.workspace = true
+wake-daemon.workspace = true
+serde_json = "1.0.154"
+
+[lints]
+workspace = true
