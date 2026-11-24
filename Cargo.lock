@@ -4936,6 +4936,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "wake-resume-test"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "time",
+ "wake-claude",
+ "wake-daemon",
+]
+
+[[package]]
 name = "wake-window"
 version = "0.1.0"
 dependencies = [

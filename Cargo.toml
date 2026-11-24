@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
 members = ["apps/*", "crates/*"]
-default-members = ["crates/*", "apps/wake", "apps/record-fixtures"]
+default-members = ["crates/*", "apps/wake", "apps/record-fixtures", "apps/resume-test"]
 
 [workspace.package]
 version = "0.1.0"

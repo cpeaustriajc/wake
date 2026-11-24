@@ -32,6 +32,30 @@ pub struct AgentConfig {
     pub socket: PathBuf,
 }
 
+/// Whether the reload hook is attached, and any extra `claude` arguments.
+///
+/// The default attaches the hook and adds nothing, which is what
+/// [`command`] and [`Agent::start`] use.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Launch {
+    /// Whether `claude` gets the `SessionStart` hook that runs
+    /// `wake hook reload`. Leave it out only for a control run that measures
+    /// what the hook adds.
+    pub reload_hook: bool,
+    /// Arguments appended after Wake's own, for example a permission mode.
+    /// They must not change compaction settings.
+    pub extra_arguments: Vec<OsString>,
+}
+
+impl Default for Launch {
+    fn default() -> Self {
+        Self {
+            reload_hook: true,
+            extra_arguments: Vec::new(),
+        }
+    }
+}
+
 /// The settings `claude` receives for one run: a `SessionStart` hook for the
 /// `compact` matcher that runs `wake hook reload`. They are passed on the
 /// command line, so nothing is written to the repository or the home folder.
@@ -52,24 +76,35 @@ fn shell_quote(path: &Path) -> String {
     format!("'{}'", path.to_string_lossy().replace('\'', "'\\''"))
 }
 
-/// The `claude` command for an agent, not yet started.
+/// The `claude` command for an agent with the reload hook, not yet started.
 #[must_use]
 pub fn command(config: &AgentConfig) -> Command {
+    command_with(config, &Launch::default())
+}
+
+/// The `claude` command for an agent started as `launch` says, not yet
+/// started.
+#[must_use]
+pub fn command_with(config: &AgentConfig, launch: &Launch) -> Command {
     let mut command = Command::new(&config.claude);
-    let arguments: [OsString; 9] = [
+    let arguments: [OsString; 6] = [
         "-p".into(),
         "--input-format".into(),
         "stream-json".into(),
         "--output-format".into(),
         "stream-json".into(),
         "--verbose".into(),
-        "--settings".into(),
-        hook_settings(&config.wake).to_string().into(),
-        "--append-system-prompt".into(),
     ];
+    command.args(arguments);
+    if launch.reload_hook {
+        command
+            .arg("--settings")
+            .arg(hook_settings(&config.wake).to_string());
+    }
     command
-        .args(arguments)
+        .arg("--append-system-prompt")
         .arg(PROGRESS_INSTRUCTIONS)
+        .args(&launch.extra_arguments)
         .current_dir(&config.folder)
         .env(SOCKET_ENV, &config.socket)
         .stdin(Stdio::piped())
@@ -129,7 +164,16 @@ impl Agent {
     ///
     /// Returns the I/O error if `claude` cannot be started.
     pub fn start(config: &AgentConfig) -> io::Result<Self> {
-        let mut child = command(config).spawn()?;
+        Self::start_with(config, &Launch::default())
+    }
+
+    /// Starts `claude` in the configured folder as `launch` says.
+    ///
+    /// # Errors
+    ///
+    /// Returns the I/O error if `claude` cannot be started.
+    pub fn start_with(config: &AgentConfig, launch: &Launch) -> io::Result<Self> {
+        let mut child = command_with(config, launch).spawn()?;
         let input = child.stdin.take();
         let output = child
             .stdout
