@@ -9,6 +9,17 @@ all-features = false
 # Known vulnerabilities, unmaintained and unsound crates are errors; so are
 # yanked versions.
 yanked = "deny"
+# Unmaintained advisories on GPUI's transitive crates (ADR-010). Wake cannot
+# fix them without patching GPUI. Each ID is listed on purpose so any new
+# advisory still fails the check. Decision: issue #8, owner's comment.
+ignore = [
+    { id = "RUSTSEC-2026-0192", reason = "ttf-parser is unmaintained; it comes through GPUI and can't be fixed in Wake" },
+    { id = "RUSTSEC-2026-0206", reason = "rustybuzz is unmaintained; it comes through GPUI and can't be fixed in Wake" },
+    { id = "RUSTSEC-2026-0370", reason = "zvariant is unmaintained; it comes through GPUI and can't be fixed in Wake" },
+    { id = "RUSTSEC-2026-0371", reason = "zbus_names is unmaintained; it comes through GPUI and can't be fixed in Wake" },
+    { id = "RUSTSEC-2026-0372", reason = "zvariant_derive is unmaintained; it comes through GPUI and can't be fixed in Wake" },
+    { id = "RUSTSEC-2026-0543", reason = "chrono is unmaintained; it comes through GPUI and can't be fixed in Wake" },
+]
 
 [licenses]
 # Wake is AGPL-3.0-or-later (ADR-015), so every dependency must offer a license
@@ -39,5 +50,12 @@ highlight = "all"
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-# GPUI is a git dependency on the Zed monorepo (ADR-010); no other git source.
-allow-git = ["https://github.com/zed-industries/zed"]
+# GPUI is a git dependency on the Zed monorepo (ADR-010). These are the exact
+# repositories GPUI's own tree needs; nothing else (decision on issue #8).
+allow-git = [
+    "https://github.com/zed-industries/zed",
+    "https://github.com/gfx-rs/wgpu",
+    "https://github.com/zed-industries/font-kit",
+    "https://github.com/zed-industries/oo7",
+    "https://github.com/zed-industries/wasm_thread",
+]
