@@ -20,7 +20,6 @@ env:
   CARGO_MACHETE_VERSION: 0.9.1
 
 jobs:
-  # Required check name: "check (ubuntu)"
   check:
     name: check (ubuntu)
     runs-on: ubuntu-latest
@@ -46,7 +45,6 @@ jobs:
           restore-keys: cargo-build-${{ runner.os }}-${{ env.RUST_VERSION }}-
       - run: just check
 
-  # Required check name: "window (macos)"
   window:
     name: window (macos)
     runs-on: macos-latest
