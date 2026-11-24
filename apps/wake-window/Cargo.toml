@@ -1,0 +1,16 @@
+[package]
+name = "wake-window"
+description = "Wake desktop window, a viewer (ADR-011) built on GPUI (ADR-010)"
+version.workspace = true
+edition.workspace = true
+publish.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+gpui.workspace = true
+gpui_platform.workspace = true
+wake.workspace = true
+
+[lints]
+workspace = true

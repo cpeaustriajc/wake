@@ -1,0 +1,74 @@
+name: check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_VERSION: 1.100.0
+  JUST_VERSION: 1.59.0
+  CARGO_DENY_VERSION: 0.21.0
+  CARGO_MACHETE_VERSION: 0.9.1
+
+jobs:
+  # Required check name: "check (ubuntu)"
+  check:
+    name: check (ubuntu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: rustup toolchain install "$RUST_VERSION" --profile minimal --component rustfmt,clippy --no-self-update
+      - run: rustup default "$RUST_VERSION"
+      - uses: actions/cache@v4
+        with:
+          path: ~/cargo-tools
+          key: cargo-tools-${{ runner.os }}-${{ env.RUST_VERSION }}-just-${{ env.JUST_VERSION }}-deny-${{ env.CARGO_DENY_VERSION }}-machete-${{ env.CARGO_MACHETE_VERSION }}
+      - run: cargo install --locked --root "$HOME/cargo-tools" "just@$JUST_VERSION" "cargo-deny@$CARGO_DENY_VERSION" "cargo-machete@$CARGO_MACHETE_VERSION"
+      - run: echo "$HOME/cargo-tools/bin" >> "$GITHUB_PATH"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            target
+          key: cargo-build-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-build-${{ runner.os }}-${{ env.RUST_VERSION }}-
+      - run: just check
+
+  # Required check name: "window (macos)"
+  window:
+    name: window (macos)
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: rustup toolchain install "$RUST_VERSION" --profile minimal --component rustfmt,clippy --no-self-update
+      - run: rustup default "$RUST_VERSION"
+      - uses: actions/cache@v4
+        with:
+          path: ~/cargo-tools
+          key: cargo-tools-${{ runner.os }}-${{ env.RUST_VERSION }}-just-${{ env.JUST_VERSION }}
+      - run: cargo install --locked --root "$HOME/cargo-tools" "just@$JUST_VERSION"
+      - run: echo "$HOME/cargo-tools/bin" >> "$GITHUB_PATH"
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: cargo-window-${{ runner.os }}-${{ env.RUST_VERSION }}-${{ hashFiles('Cargo.lock') }}
+          restore-keys: cargo-window-${{ runner.os }}-${{ env.RUST_VERSION }}-
+      - run: just window
