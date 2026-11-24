@@ -18,7 +18,7 @@ unused-dependencies:
 test:
     cargo test --locked
 
-# The GPUI window crate. Needs macOS (ADR-014); CI runs it on a macOS runner.
+# The GPUI window app (apps/wake-window). Needs macOS (ADR-014); CI runs it on a macOS runner.
 window:
     cargo clippy -p wake-window --all-targets --locked -- -D warnings
     cargo build -p wake-window --locked

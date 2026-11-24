@@ -1,8 +1,8 @@
 [workspace]
 resolver = "3"
-members = ["crates/*"]
-# Core crates only: `cargo test`, `cargo clippy` and friends skip the window
-# crate, which needs a macOS GPUI build (`just window`).
+members = ["apps/*", "crates/*"]
+# Core crates only: `cargo test`, `cargo clippy` and friends skip apps/wake-window,
+# which needs a macOS GPUI build (`just window`).
 default-members = ["crates/wake"]
 
 [workspace.package]
