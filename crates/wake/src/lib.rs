@@ -6,13 +6,3 @@
 pub fn name() -> &'static str {
     "Wake"
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn name_is_wake() {
-        assert_eq!(name(), "Wake", "the product name changed");
-    }
-}

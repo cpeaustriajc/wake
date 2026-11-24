@@ -9,6 +9,8 @@
   caller must know. Never restate the name.
 - Runnable binaries go in `apps/`, shared libraries in `crates/`.
 - Run `just check` before you finish. A commit is refused while it fails.
+- Put tests in each crate's `tests/` folder, never in a `#[cfg(test)]` module under `src/`. The
+  test guard only protects files under `tests/`.
 - Never change a failing test to make it pass: fix the code, or stop and tell the owner which
   test and why.
 - Lints, dependency rules, the `justfile`, the toolchain, CI and these rules ask the owner
