@@ -1,0 +1,43 @@
+# cargo-deny configuration (schema of cargo-deny 0.21). Run: cargo deny check
+
+[graph]
+# Off on purpose: gpui's optional `screen-capture` feature pulls in
+# zed-industries/scap (a git source), which Wake does not use.
+all-features = false
+
+[advisories]
+# Known vulnerabilities, unmaintained and unsound crates are errors; so are
+# yanked versions.
+yanked = "deny"
+
+[licenses]
+# Wake is AGPL-3.0-or-later (ADR-015), so every dependency must offer a license
+# compatible with it. Narrow list derived from the real dependency tree
+# (`cargo deny list`); widen it only for a crate that needs it.
+allow = [
+    "MIT",
+    "Apache-2.0",
+    # Found in GPUI's tree (`cargo deny list`); each is compatible with AGPL-3.0-or-later.
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Zlib",
+]
+confidence-threshold = 0.93
+
+[licenses.private]
+ignore = true
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+highlight = "all"
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+# GPUI is a git dependency on the Zed monorepo (ADR-010); no other git source.
+allow-git = ["https://github.com/zed-industries/zed"]
