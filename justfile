@@ -1,7 +1,6 @@
 default: check
 
-# One recipe per check. To add a check, write its recipe and name it here.
-check: format unused-dependencies dependencies lint test
+check: format unused-dependencies dependencies lint test-location test
 
 format:
     cargo fmt --check
@@ -18,10 +17,19 @@ unused-dependencies:
 test:
     cargo test --locked
 
-# The GPUI window app (apps/wake-window). Needs macOS (ADR-014); CI runs it on a macOS runner.
+test-location:
+    #!/bin/sh
+    found=$(grep -rlE '#\[(test|cfg\(test\))\]' --include='*.rs' apps/*/src crates/*/src 2>/dev/null | tr '\n' ' ')
+    [ -z "$found" ] && exit 0
+    echo "tests belong under tests/, not src/: $found" >&2
+    exit 1
+
 window:
     cargo clippy -p wake-window --all-targets --locked -- -D warnings
     cargo build -p wake-window --locked
+
+hooks:
+    git config core.hooksPath .githooks
 
 fix:
     cargo fmt

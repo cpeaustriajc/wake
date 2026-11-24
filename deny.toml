@@ -1,17 +1,8 @@
-# cargo-deny configuration (schema of cargo-deny 0.21). Run: cargo deny check
-
 [graph]
-# Off on purpose: gpui's optional `screen-capture` feature pulls in
-# zed-industries/scap (a git source), which Wake does not use.
 all-features = false
 
 [advisories]
-# Known vulnerabilities, unmaintained and unsound crates are errors; so are
-# yanked versions.
 yanked = "deny"
-# Unmaintained advisories on GPUI's transitive crates (ADR-010). Wake cannot
-# fix them without patching GPUI. Each ID is listed on purpose so any new
-# advisory still fails the check. Decision: issue #8, owner's comment.
 ignore = [
     { id = "RUSTSEC-2026-0192", reason = "ttf-parser is unmaintained; it comes through GPUI and can't be fixed in Wake" },
     { id = "RUSTSEC-2026-0206", reason = "rustybuzz is unmaintained; it comes through GPUI and can't be fixed in Wake" },
@@ -22,13 +13,9 @@ ignore = [
 ]
 
 [licenses]
-# Wake is AGPL-3.0-or-later (ADR-015), so every dependency must offer a license
-# compatible with it. Narrow list derived from the real dependency tree
-# (`cargo deny list`); widen it only for a crate that needs it.
 allow = [
     "MIT",
     "Apache-2.0",
-    # Found in GPUI's tree (`cargo deny list`); each is compatible with AGPL-3.0-or-later.
     "BSD-2-Clause",
     "BSD-3-Clause",
     "ISC",
@@ -50,8 +37,6 @@ highlight = "all"
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-# GPUI is a git dependency on the Zed monorepo (ADR-010). These are the exact
-# repositories GPUI's own tree needs; nothing else (decision on issue #8).
 allow-git = [
     "https://github.com/zed-industries/zed",
     "https://github.com/gfx-rs/wgpu",
