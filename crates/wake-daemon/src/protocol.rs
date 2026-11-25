@@ -13,6 +13,20 @@ pub const REGISTER_AGENT: &str = "agent.register";
 pub const LIST_AGENTS: &str = "agent.list";
 /// The method that tells the daemon to follow a cloud task's branch.
 pub const TRACK_CLOUD_TASK: &str = "cloud.track";
+/// The method that puts an agent's tile at a place on the floor.
+pub const PLACE_ON_FLOOR: &str = "floor.place";
+/// The method that opens a local agent's terminal, starting its shell if none
+/// is running.
+pub const OPEN_TERMINAL: &str = "terminal.open";
+/// The method that types text into a terminal.
+pub const WRITE_TERMINAL: &str = "terminal.write";
+/// The method that tells a terminal its size changed.
+pub const RESIZE_TERMINAL: &str = "terminal.resize";
+/// The method that reads a terminal's output, waiting for some when there is
+/// none yet.
+pub const READ_TERMINAL: &str = "terminal.read";
+/// The longest a [`READ_TERMINAL`] call waits for output, in milliseconds.
+pub const MAX_TERMINAL_WAIT_MS: u64 = 30_000;
 
 /// The request was not valid JSON.
 pub const PARSE_ERROR: i64 = -32700;
@@ -123,6 +137,128 @@ pub struct CloudTracking {
     pub branch: String,
 }
 
+/// Where an agent's tile sits on the floor, in floor pixels from the top-left
+/// corner. The daemon keeps the numbers as given: tile size, grid step and
+/// slot layout belong to the window that draws the floor.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FloorPosition {
+    /// Pixels from the floor's left edge, never negative.
+    pub x: i64,
+    /// Pixels from the floor's top edge, never negative.
+    pub y: i64,
+}
+
+/// The parameters of [`PLACE_ON_FLOOR`]. Placing an agent that already has a
+/// position moves it. A negative `x` or `y`, or a `location` and `id` that no
+/// agent has, is refused with [`INVALID_PARAMS`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FloorPlacement {
+    /// Where the agent runs. An ID names an agent only together with this.
+    pub location: Location,
+    /// The agent's ID, as [`LIST_AGENTS`] reports it.
+    pub id: i64,
+    /// Pixels from the floor's left edge.
+    pub x: i64,
+    /// Pixels from the floor's top edge.
+    pub y: i64,
+}
+
+/// The parameters of [`OPEN_TERMINAL`]. Each local agent has at most one
+/// running shell. It starts in the agent's folder, runs the program in the
+/// daemon's `SHELL` variable (`/bin/sh` without one) with the daemon's
+/// environment and `TERM=xterm-256color`, and keeps running when the caller
+/// disconnects. It ends when the daemon ends. Opening an agent whose shell is
+/// running gives the same terminal and applies the size; opening after the
+/// shell exited starts a new shell under a new terminal ID. A cloud task, an
+/// unknown agent, and a size outside 1 to 1000 are refused with
+/// [`INVALID_PARAMS`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TerminalOpening {
+    /// Where the agent runs. Only a local agent has a terminal.
+    pub location: Location,
+    /// The agent's ID, as [`LIST_AGENTS`] reports it.
+    pub id: i64,
+    /// The terminal's width in character cells.
+    pub cols: u16,
+    /// The terminal's height in character cells.
+    pub rows: u16,
+}
+
+/// The result of [`OPEN_TERMINAL`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct OpenedTerminal {
+    /// The terminal's ID, for the other terminal methods. It names one shell:
+    /// a shell started later for the same agent has another ID.
+    pub terminal: i64,
+}
+
+/// The parameters of [`WRITE_TERMINAL`]: text typed into the shell, as the
+/// keyboard would send it. An unknown terminal and a shell that has exited
+/// are refused with [`INVALID_PARAMS`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TerminalInput {
+    /// The terminal's ID, from [`OPEN_TERMINAL`].
+    pub terminal: i64,
+    /// The text to type. A command runs when the text ends in a newline.
+    pub data: String,
+}
+
+/// The parameters of [`RESIZE_TERMINAL`]. An unknown terminal and a size
+/// outside 1 to 1000 are refused with [`INVALID_PARAMS`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TerminalSize {
+    /// The terminal's ID, from [`OPEN_TERMINAL`].
+    pub terminal: i64,
+    /// The new width in character cells.
+    pub cols: u16,
+    /// The new height in character cells.
+    pub rows: u16,
+}
+
+/// The parameters of [`READ_TERMINAL`], a long poll. The daemon answers at
+/// once when the shell has written past `after` or has exited, and otherwise
+/// waits up to `wait_ms` for either. An unknown terminal and an `after` past
+/// the end of the output are refused with [`INVALID_PARAMS`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TerminalReading {
+    /// The terminal's ID, from [`OPEN_TERMINAL`].
+    pub terminal: i64,
+    /// How many bytes of the shell's output the caller already has: `0` to
+    /// replay what the daemon still keeps, otherwise the last `next`.
+    pub after: u64,
+    /// The longest wait in milliseconds. The daemon caps it at
+    /// [`MAX_TERMINAL_WAIT_MS`].
+    pub wait_ms: u64,
+}
+
+/// The result of [`READ_TERMINAL`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TerminalOutput {
+    /// The output bytes from `after` on, in standard base64 with padding:
+    /// raw bytes, because a read can end in the middle of a character.
+    /// [`TerminalOutput::bytes`] decodes them. Empty when the wait ran out.
+    /// One answer carries at most 64 KiB; ask again from `next` for the rest.
+    pub data: String,
+    /// The offset to pass as `after` in the next call.
+    pub next: u64,
+    /// Whether output between `after` and the start of `data` is gone. The
+    /// daemon keeps the last mebibyte of each shell's output.
+    pub truncated: bool,
+    /// The shell's exit code, once it has exited and `data` reaches the end
+    /// of its output; `None` while it runs. `-1` stands for a shell whose
+    /// status could not be read.
+    #[serde(default)]
+    pub exited: Option<i64>,
+}
+
+impl TerminalOutput {
+    /// The bytes `data` stands for, or `None` if `data` is not base64.
+    #[must_use]
+    pub fn bytes(&self) -> Option<Vec<u8>> {
+        crate::base64::decode(&self.data)
+    }
+}
+
 /// What the daemon read from an agent's progress file when it built the list.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "state", rename_all = "snake_case")]
@@ -179,6 +315,11 @@ pub struct AgentEntry {
     /// time of the call for a local agent, within one polling interval for a
     /// cloud task.
     pub progress: AgentProgress,
+    /// Where the agent's tile sits on the floor; `None` until someone places
+    /// it with [`PLACE_ON_FLOOR`]. Restarting the daemon, registering the
+    /// folder again or tracking the branch again keeps it.
+    #[serde(default)]
+    pub position: Option<FloorPosition>,
 }
 
 /// The result of [`LIST_AGENTS`]: local agents oldest first, then cloud tasks

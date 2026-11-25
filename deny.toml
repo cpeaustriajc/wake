@@ -3,14 +3,6 @@ all-features = false
 
 [advisories]
 yanked = "deny"
-ignore = [
-    { id = "RUSTSEC-2026-0192", reason = "ttf-parser is unmaintained; it comes through GPUI and can't be fixed in Wake" },
-    { id = "RUSTSEC-2026-0206", reason = "rustybuzz is unmaintained; it comes through GPUI and can't be fixed in Wake" },
-    { id = "RUSTSEC-2026-0370", reason = "zvariant is unmaintained; it comes through GPUI and can't be fixed in Wake" },
-    { id = "RUSTSEC-2026-0371", reason = "zbus_names is unmaintained; it comes through GPUI and can't be fixed in Wake" },
-    { id = "RUSTSEC-2026-0372", reason = "zvariant_derive is unmaintained; it comes through GPUI and can't be fixed in Wake" },
-    { id = "RUSTSEC-2026-0543", reason = "chrono is unmaintained; it comes through GPUI and can't be fixed in Wake" },
-]
 
 [licenses]
 allow = [
@@ -37,10 +29,3 @@ highlight = "all"
 unknown-registry = "deny"
 unknown-git = "deny"
 allow-registry = ["https://github.com/rust-lang/crates.io-index"]
-allow-git = [
-    "https://github.com/zed-industries/zed",
-    "https://github.com/gfx-rs/wgpu",
-    "https://github.com/zed-industries/font-kit",
-    "https://github.com/zed-industries/oo7",
-    "https://github.com/zed-industries/wasm_thread",
-]
