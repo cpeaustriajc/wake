@@ -26,7 +26,7 @@ const REPOSITORY_VARIABLES: [&str; 15] = [
     "GIT_COMMON_DIR",
 ];
 
-fn git(folder: &Path, arguments: &[&str]) -> Result<String, String> {
+pub(crate) fn git(folder: &Path, arguments: &[&str]) -> Result<String, String> {
     let mut command = Command::new("git");
     for variable in REPOSITORY_VARIABLES {
         command.env_remove(variable);
@@ -86,7 +86,7 @@ pub fn commit_events(reflog: &[String], subject: &str) -> usize {
         .count()
 }
 
-fn lines(text: &str) -> Vec<String> {
+pub(crate) fn lines(text: &str) -> Vec<String> {
     text.lines().map(str::to_owned).collect()
 }
 

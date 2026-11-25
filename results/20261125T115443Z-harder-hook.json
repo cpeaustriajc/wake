@@ -1,0 +1,262 @@
+{
+  "run_id": "20261125T115443Z-harder-hook",
+  "task": "harder",
+  "trial": false,
+  "reload_hook": true,
+  "started_at": "2026-11-25T11:54:43.910092Z",
+  "finished_at": "2026-11-25T11:57:02.0122Z",
+  "claude_version": "2.1.331",
+  "model": "claude-opus-5-5",
+  "permission_mode": "acceptEdits",
+  "compaction": {
+    "happened": true,
+    "count": 1,
+    "trigger": "manual",
+    "pre_tokens": 52126,
+    "post_tokens": 13356
+  },
+  "autocompact": null,
+  "hook": {
+    "attached": true,
+    "ran": true,
+    "printed_progress_file": true,
+    "in_stream": [
+      {
+        "name": "SessionStart:startup",
+        "outcome": "success",
+        "exit_code": 0,
+        "printed_progress_file": false
+      },
+      {
+        "name": "SessionStart:startup",
+        "outcome": "success",
+        "exit_code": 0,
+        "printed_progress_file": false
+      },
+      {
+        "name": "SessionStart:compact",
+        "outcome": "success",
+        "exit_code": 0,
+        "printed_progress_file": false
+      },
+      {
+        "name": "SessionStart:compact",
+        "outcome": "success",
+        "exit_code": 0,
+        "printed_progress_file": true
+      },
+      {
+        "name": "SessionStart:compact",
+        "outcome": "success",
+        "exit_code": 0,
+        "printed_progress_file": false
+      }
+    ],
+    "daemon_rows": [
+      {
+        "source": "compact",
+        "progress": "found"
+      }
+    ]
+  },
+  "snapshot_before_compaction": {
+    "progress": "---\nphase: waiting\nheadline: Steps 1-4 done; waiting for the user's next message before step 5\nupdated: 2026-11-25T11:59:00Z\n---\n\n## Decisions\n\ndecision codename: quillwort\ndecision port: 27413\ndecision colour: 3a7f1c\ndecision motto: lantern pebble orbit\n\n## Steps\n\n- step 1 (choose codename): done\n- step 2 (choose port): done\n- step 3 (choose colour): done\n- step 4 (choose motto): done\n- step 5 (write codename=): todo\n- step 6 (write port=): todo\n- step 7 (write colour=): todo\n- step 8 (write motto=): todo\n\n## Notes\n\n- One commit per step: steps/N.txt, LEDGER.md, .wake/progress.md. Never redo or amend.\n- Decisions live only in this file.\n",
+    "decisions": {
+      "Ok": {
+        "codename": "quillwort",
+        "colour": "3a7f1c",
+        "motto": "lantern pebble orbit",
+        "port": "27413"
+      }
+    },
+    "leaks": []
+  },
+  "steps": {
+    "total": 8,
+    "finished_before_compaction": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "finished_at_end": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "redone": [],
+    "undone": []
+  },
+  "wrong_choice": [],
+  "evidence_before_compaction": [
+    {
+      "number": 1,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    },
+    {
+      "number": 2,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    },
+    {
+      "number": 3,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    },
+    {
+      "number": 4,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    },
+    {
+      "number": 5,
+      "file_present": false,
+      "file_correct": false,
+      "ledger_lines": 0,
+      "commits": 0,
+      "commit_events": 0,
+      "reverted": false
+    },
+    {
+      "number": 6,
+      "file_present": false,
+      "file_correct": false,
+      "ledger_lines": 0,
+      "commits": 0,
+      "commit_events": 0,
+      "reverted": false
+    },
+    {
+      "number": 7,
+      "file_present": false,
+      "file_correct": false,
+      "ledger_lines": 0,
+      "commits": 0,
+      "commit_events": 0,
+      "reverted": false
+    },
+    {
+      "number": 8,
+      "file_present": false,
+      "file_correct": false,
+      "ledger_lines": 0,
+      "commits": 0,
+      "commit_events": 0,
+      "reverted": false
+    }
+  ],
+  "evidence_at_end": [
+    {
+      "number": 1,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    },
+    {
+      "number": 2,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    },
+    {
+      "number": 3,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    },
+    {
+      "number": 4,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    },
+    {
+      "number": 5,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    },
+    {
+      "number": 6,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    },
+    {
+      "number": 7,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    },
+    {
+      "number": 8,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    }
+  ],
+  "turns": [
+    {
+      "is_error": false,
+      "num_turns": 24
+    },
+    {
+      "is_error": false,
+      "num_turns": 0
+    },
+    {
+      "is_error": false,
+      "num_turns": 21
+    }
+  ],
+  "verdict": "pass",
+  "reasons": [
+    "every step finished exactly once with the choices made before /compact"
+  ]
+}
