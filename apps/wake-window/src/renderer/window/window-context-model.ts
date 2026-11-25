@@ -31,6 +31,7 @@ interface FleetSnapshot {
 }
 
 interface Save {
+  readonly first: boolean;
   readonly key: string;
   readonly placement: Placement;
 }
@@ -123,7 +124,9 @@ const savesFor = (
     Array.filter(tilesIn(context), (tile) =>
       Array.some(keys, (key) => key === tile.key)
     ),
-    ({ id, key, location }) => ({
+    ({ id, key, location, spot }) => ({
+      first:
+        spot === null && !Array.some(context.asked, (asked) => asked === key),
       key,
       placement: { id, location, ...positionOf({ key, layout }) },
     })
@@ -134,7 +137,9 @@ const fleetSettled = (context: WindowContext): Partial<WindowContext> => {
   const waiting = stillHeld({ held: context.held, machines });
   const fresh = Array.filter(
     unplacedKeys(machines),
-    (key) => !Array.some(context.asked, (asked) => asked === key)
+    (key) =>
+      !Array.some(context.asked, (asked) => asked === key) &&
+      !Array.some(context.grips, (grip) => grip.key === key)
   );
   const shown = shownLayout({ held: waiting, machines });
   const slots = Record.filter(shown, (_position, key) =>
@@ -295,7 +300,7 @@ const refusedSave = (
   outcome: Exclude<PlaceOutcome, { kind: "placed" }>
 ): Partial<WindowContext> => ({
   asked:
-    outcome.kind === "daemon_down"
+    outcome.kind === "daemon_down" && sent.first
       ? Array.filter(context.asked, (asked) => asked !== sent.key)
       : context.asked,
   failures: [{ key: sent.key, reason: outcome.reason }],

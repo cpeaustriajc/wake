@@ -208,29 +208,31 @@ describe("the window machine, under any sequence of events", () => {
       )
   );
 
-  it.effect("An unplaced agent is sent to the daemon at most once", () =>
-    Effect.promise(() =>
-      fc.assert(
-        fc.asyncProperty(
-          fc.array(fc.constantFrom<Step>({ kind: "poll" }), { maxLength: 8 }),
-          fc.boolean(),
-          (polls, refuse) =>
-            Effect.runPromise(
-              play(polls, [refuse]).pipe(
-                Effect.tap(({ sent }) =>
-                  Effect.sync(() => {
-                    assert.lengthOf(
-                      Array.filter(sent, (placement) => placement.id === 3),
-                      1
-                    );
-                  })
-                ),
-                Effect.asVoid
+  it.effect(
+    "An unplaced agent is sent to the daemon at most once, not counting sends the daemon never received",
+    () =>
+      Effect.promise(() =>
+        fc.assert(
+          fc.asyncProperty(
+            fc.array(fc.constantFrom<Step>({ kind: "poll" }), { maxLength: 8 }),
+            fc.boolean(),
+            (polls, refuse) =>
+              Effect.runPromise(
+                play(polls, [refuse]).pipe(
+                  Effect.tap(({ sent }) =>
+                    Effect.sync(() => {
+                      assert.lengthOf(
+                        Array.filter(sent, (placement) => placement.id === 3),
+                        1
+                      );
+                    })
+                  ),
+                  Effect.asVoid
+                )
               )
-            )
+          )
         )
       )
-    )
   );
 
   it.effect("A press that never moves 5 px never places anything", () =>
