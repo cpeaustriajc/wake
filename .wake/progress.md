@@ -1,6 +1,6 @@
 ---
-phase: plan
-headline: Throwaway move one: reading the repo
-updated: 2026-11-25T12:06:41Z
+phase: build
+headline: Throwaway move two: writing the parser
+updated: 2026-11-25T12:07:11Z
 ---
-Move 1 of the throwaway branch.
+Move 2 of the throwaway branch.
