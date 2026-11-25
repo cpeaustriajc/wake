@@ -5,13 +5,12 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use serde::Deserialize;
-use wake::progress::ProgressFile;
+use wake::progress::{PATH, ProgressFile};
 use wake_daemon::protocol::{CompactionReport, ProgressState};
 use wake_daemon::record_compaction;
 
 use crate::paths;
 
-const PROGRESS_FILE: &str = ".wake/progress.md";
 const DEFAULT_SOURCE: &str = "compact";
 
 #[derive(Deserialize, Default)]
@@ -66,7 +65,7 @@ pub(crate) fn reload() -> ExitCode {
         .map(PathBuf::from)
         .or_else(|| env::current_dir().ok())
         .unwrap_or_default();
-    let (progress, text) = load(&folder.join(PROGRESS_FILE));
+    let (progress, text) = load(&folder.join(PATH));
     let _ = io::stdout().lock().write_all(text.as_bytes());
 
     let report = CompactionReport {

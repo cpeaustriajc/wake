@@ -7,6 +7,10 @@ use serde_json::Value;
 pub const VERSION: &str = "2.0";
 /// The method that records a compaction.
 pub const RECORD_COMPACTION: &str = "compaction.record";
+/// The method that tells the daemon an agent started.
+pub const REGISTER_AGENT: &str = "agent.register";
+/// The method that lists every agent the daemon knows.
+pub const LIST_AGENTS: &str = "agent.list";
 
 /// The request was not valid JSON.
 pub const PARSE_ERROR: i64 = -32700;
@@ -64,6 +68,91 @@ pub struct CompactionReport {
     pub source: String,
     /// Whether the progress file could be reloaded.
     pub progress: ProgressState,
+}
+
+/// Where an agent runs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub enum Location {
+    /// On this machine.
+    Local,
+    /// In the harness's cloud.
+    Cloud,
+}
+
+impl Location {
+    /// The word stored in the database and shown to the user.
+    #[must_use]
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Local => "local",
+            Self::Cloud => "cloud",
+        }
+    }
+
+    /// The location stored under `word`, if there is one.
+    #[must_use]
+    pub fn from_word(word: &str) -> Option<Self> {
+        match word {
+            "local" => Some(Self::Local),
+            "cloud" => Some(Self::Cloud),
+            _ => None,
+        }
+    }
+}
+
+/// The parameters of [`REGISTER_AGENT`]. Registering a folder that is already
+/// registered keeps its agent and its ID.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AgentRegistration {
+    /// The folder the agent works in, as an absolute path.
+    pub folder: String,
+}
+
+/// What the daemon read from an agent's progress file when it built the list.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "state", rename_all = "snake_case")]
+#[non_exhaustive]
+pub enum AgentProgress {
+    /// The file was there and valid.
+    Found {
+        /// The one-line summary the agent wrote.
+        headline: String,
+        /// The agent's phase.
+        phase: String,
+        /// When the agent last updated the file, as an RFC 3339 timestamp.
+        updated: String,
+    },
+    /// There was no file.
+    Missing,
+    /// The file was there but could not be read as a progress file.
+    Invalid {
+        /// Why the file was rejected.
+        reason: String,
+    },
+}
+
+/// One agent in the answer to [`LIST_AGENTS`].
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AgentEntry {
+    /// The agent's ID, which stays the same across daemon restarts.
+    pub id: i64,
+    /// The folder the agent works in.
+    pub folder: String,
+    /// Where the agent runs.
+    pub location: Location,
+    /// When the daemon last registered the agent, in Unix seconds.
+    pub started_at: i64,
+    /// What the agent's progress file said at the time of the call.
+    pub progress: AgentProgress,
+}
+
+/// The result of [`LIST_AGENTS`], oldest agent first.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AgentList {
+    /// Every agent the daemon knows.
+    pub agents: Vec<AgentEntry>,
 }
 
 /// A JSON-RPC request.

@@ -1,6 +1,7 @@
-//! The `wake` command: the daemon, the reload hook and starting an agent.
+//! The `wake` command: the daemon, the reload hook, starting an agent and listing agents.
 
 mod agent;
+mod agents;
 mod daemon;
 mod hook;
 mod paths;
@@ -12,7 +13,8 @@ use std::process::ExitCode;
 const USAGE: &str = "usage:
   wake daemon
   wake hook reload
-  wake agent start <folder> [message...]";
+  wake agent start <folder> [message...]
+  wake agents";
 
 fn main() -> ExitCode {
     let arguments: Vec<String> = env::args().skip(1).collect();
@@ -21,6 +23,7 @@ fn main() -> ExitCode {
         ["daemon"] => daemon::run(),
         ["hook", "reload"] => Ok(hook::reload()),
         ["agent", "start", folder, messages @ ..] => agent::start(folder, messages),
+        ["agents"] => agents::run(),
         _ => Err(USAGE.to_owned()),
     };
     match outcome {

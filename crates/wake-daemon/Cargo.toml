@@ -1,6 +1,6 @@
 [package]
 name = "wake-daemon"
-description = "Wake daemon: JSON-RPC over a Unix socket, compactions in SQLite (ADR-011)"
+description = "Wake daemon: JSON-RPC over a Unix socket, compactions and agents in SQLite (ADR-011)"
 version.workspace = true
 edition.workspace = true
 publish.workspace = true
@@ -8,9 +8,11 @@ license.workspace = true
 repository.workspace = true
 
 [dependencies]
+wake.workspace = true
 rusqlite = { version = "0.43.0", features = ["bundled"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
+time = { version = "0.3.55", default-features = false, features = ["formatting"] }
 
 [lints]
 workspace = true

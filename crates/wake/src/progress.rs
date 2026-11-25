@@ -7,6 +7,9 @@ use std::fmt;
 use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
 
+/// Where an agent's progress file sits, relative to the folder it works in.
+pub const PATH: &str = ".wake/progress.md";
+
 const DELIMITER: &str = "---";
 const PHASE: &str = "phase";
 const HEADLINE: &str = "headline";
