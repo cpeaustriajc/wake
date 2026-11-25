@@ -40,6 +40,15 @@ probe "a view imports XState" "no-restricted-imports" src/renderer/probe-view.ts
 import { createActor } from "xstate";
 export { createActor, createActorContext };'
 
+probe "a view other than the terminal host draws with xterm" "no-restricted-imports" src/renderer/probe-view.tsx \
+  'import { FitAddon } from "@xterm/addon-fit";
+import { Terminal } from "@xterm/xterm";
+export { FitAddon, Terminal };'
+
+probe "the main process imports xterm" "no-restricted-imports" src/main/probe.ts \
+  'import { Terminal } from "@xterm/xterm";
+export { Terminal };'
+
 probe "a view imports the main process" "no-restricted-imports" src/renderer/probe-view.tsx \
   'import { askDaemon } from "#/main/daemon-client.ts";
 export { askDaemon };'

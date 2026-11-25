@@ -1,5 +1,6 @@
 import "#/renderer/keel/tokens.css";
 import "#/renderer/keel/bundle.css";
+import "@xterm/xterm/css/xterm.css";
 import { createRoot } from "react-dom/client";
 
 import { App } from "#/renderer/app.tsx";

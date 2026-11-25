@@ -17,7 +17,8 @@ interface PatternBan {
 const SOCKETS = "Only src/main opens sockets.";
 const STATE = "Client state lives in the XState machines.";
 const COMPILER = "React Compiler memoizes components and handlers.";
-const EFFECTS = "Only the provider and the theme attribute run effects.";
+const EFFECTS =
+  "Only the provider, the theme attribute and the terminal host run effects.";
 const MACHINES = "Only *-machine.ts and the provider import XState.";
 const VIEWS = "Only views import React, UI SDK and StyleX.";
 const PIPE = "The main process and the preload hold no view code.";
@@ -78,6 +79,10 @@ const stylesheets: PatternBan = {
   message: "Only the entry imports CSS, and only Keel's two files.",
   regex: "\\.css$",
 };
+const xterm: PatternBan = {
+  message: "Only the terminal host draws with xterm.",
+  regex: "^@xterm/[^/]+$",
+};
 const node: PatternBan = {
   message: "Only src/main and the tests use Node.",
   regex: "^node:",
@@ -105,7 +110,7 @@ const bans = (
   { paths: [...paths], patterns: [...patterns] },
 ];
 
-const everywhere: readonly PatternBan[] = [earnestModels, stylesheets];
+const everywhere: readonly PatternBan[] = [earnestModels, stylesheets, xterm];
 const viewPaths = [...net, ...electron, ...reactState];
 const viewPatterns = [...everywhere, node, mainAndPreload];
 const purePaths = [...viewPaths, ...reactAll, ...xstateReact];
@@ -115,6 +120,7 @@ const pipePaths = [...reactAll, ...xstate, ...xstateReact];
 const PROVIDER = "src/renderer/window/window-provider.tsx";
 const THEME_ATTRIBUTE = "src/renderer/theme/theme-attribute.tsx";
 const ENTRY = "src/renderer/main.tsx";
+const TERMINAL_HOST = "src/renderer/workspace/terminal-host.tsx";
 const BROWSER_GLOBALS = [
   "window",
   "document",
@@ -229,11 +235,20 @@ export default defineConfig({
       },
     },
     {
+      files: [TERMINAL_HOST],
+      rules: {
+        "no-restricted-imports": bans(
+          [...viewPaths, ...xstate, ...xstateReact],
+          [earnestModels, stylesheets, node, mainAndPreload]
+        ),
+      },
+    },
+    {
       files: [ENTRY],
       rules: {
         "no-restricted-imports": bans(
           [...viewPaths, ...reactEffects, ...xstate, ...xstateReact],
-          [earnestModels, node, mainAndPreload]
+          [earnestModels, xterm, node, mainAndPreload]
         ),
       },
     },

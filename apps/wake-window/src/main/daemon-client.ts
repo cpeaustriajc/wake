@@ -1,7 +1,7 @@
 import { createConnection } from "node:net";
 import type { Socket } from "node:net";
 
-import { Array, Effect, Schema, String } from "effect";
+import { Array, Duration, Effect, Schema, String } from "effect";
 
 import type { Answer } from "#/shared/daemon-answer.ts";
 
@@ -26,7 +26,7 @@ const RpcResponse = Schema.fromJsonString(
   ])
 );
 
-const ANSWER_TIMEOUT = "5 seconds";
+const ANSWER_MILLISECONDS = 5000;
 const HUNG_UP = "the daemon hung up before it answered";
 const LATE = "the daemon did not answer in time";
 const LINE_END = "\n";
@@ -68,7 +68,13 @@ const firstLine = (socket: Socket) =>
     });
   });
 
-const exchange = (socketPath: string, request: string) =>
+interface Exchange {
+  readonly patienceMillis: number;
+  readonly request: string;
+  readonly socketPath: string;
+}
+
+const exchange = ({ patienceMillis, request, socketPath }: Exchange) =>
   connected(socketPath).pipe(
     Effect.tap((socket) =>
       Effect.sync(() => {
@@ -78,7 +84,7 @@ const exchange = (socketPath: string, request: string) =>
     Effect.flatMap(firstLine),
     Effect.scoped,
     Effect.timeoutOrElse({
-      duration: ANSWER_TIMEOUT,
+      duration: Duration.millis(patienceMillis),
       orElse: () => Effect.fail(DaemonUnreachable.make({ reason: LATE })),
     })
   );
@@ -86,12 +92,14 @@ const exchange = (socketPath: string, request: string) =>
 interface Question {
   readonly method: string;
   readonly params: unknown;
+  readonly patienceMillis?: number;
   readonly socketPath: string;
 }
 
 const askDaemon = ({
   method,
   params,
+  patienceMillis = ANSWER_MILLISECONDS,
   socketPath,
 }: Question): Effect.Effect<Answer> =>
   Schema.encodeEffect(RpcRequest)({
@@ -100,7 +108,9 @@ const askDaemon = ({
     method,
     params,
   }).pipe(
-    Effect.flatMap((request) => exchange(socketPath, request)),
+    Effect.flatMap((request) =>
+      exchange({ patienceMillis, request, socketPath })
+    ),
     Effect.flatMap(Schema.decodeUnknownEffect(RpcResponse)),
     Effect.map((response): Answer =>
       "error" in response
@@ -119,4 +129,4 @@ const askDaemon = ({
     })
   );
 
-export { askDaemon };
+export { ANSWER_MILLISECONDS, askDaemon };

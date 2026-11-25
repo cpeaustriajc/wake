@@ -22,7 +22,8 @@ cd apps/wake-window && npm ci && npm run dev
 
 ## Stack
 
-- Electron: the main process opens one sandboxed window and forwards two daemon methods. The preload passes the two calls through and runs no library code.
+- Electron: the main process opens one sandboxed window and forwards six daemon methods. The preload passes the six calls through and runs no library code.
+- xterm.js draws the Terminal pane. The shell itself runs in the daemon.
 - React 19 for the views, with `@ui-sdk/react` (UI SDK, in beta) for behavior such as the workspace tabs.
 - React Compiler memoizes components and handlers at build time, through `@vitejs/plugin-react`'s `reactCompilerPreset()` and `@rolldown/plugin-babel`, in the renderer build only.
 - XState 5 for all client state, through `@xstate/react` in one provider file.
@@ -37,14 +38,15 @@ SolidJS was the first choice and was dropped: `@xstate/react` and `@ui-sdk/react
 
 | Path | Holds |
 | --- | --- |
-| `src/shared/` | wire schemas (`agent.ts`), the answer and reading types, the bridge contract |
-| `src/main/` | the window, the daemon client and the two forwarded methods |
-| `src/preload/` | the bridge: two functions that return what the main process answers |
+| `src/shared/` | wire schemas (`agent.ts`, `terminal.ts`), the answer and reading types, the bridge contract |
+| `src/main/` | the window, the daemon client and the six forwarded methods |
+| `src/preload/` | the bridge: six functions that return what the main process answers |
 | `src/renderer/floor/*-model.ts` | pure geometry and tile text: snap, slots, overlap, lamp tone, relative time |
 | `src/renderer/window/*-model.ts` | the machines' context and its pure transitions |
-| `src/renderer/**/*-machine.ts` | XState machines: fleet, placement, navigation, theme |
-| `src/renderer/**/*.model.ts` | earnest models of the fleet, placement and navigation regions |
+| `src/renderer/**/*-machine.ts` | XState machines: fleet, placement, navigation, terminal, theme |
+| `src/renderer/**/*.model.ts` | earnest models of the fleet, placement, navigation and terminal regions |
 | `src/renderer/window/window-provider.tsx` | the only file that imports `@xstate/react`; decodes the bridge's answers |
+| `src/renderer/workspace/terminal-host.tsx` | the only file that imports xterm: it draws what the machine feeds it and reports keys and size |
 | `src/renderer/**/*.tsx` | views: they read the machine's snapshot and send it events |
 | `src/renderer/keel/` | Keel's `tokens.css`, `bundle.css`, fonts and the typed token module |
 | `lint/wake-styles.mjs` | two lint rules for the CSS gates |
@@ -52,14 +54,18 @@ SolidJS was the first choice and was dropped: `@xstate/react` and `@ui-sdk/react
 
 ## The daemon
 
-The window uses two methods of the daemon's JSON-RPC socket and nothing else:
+The window uses six methods of the daemon's JSON-RPC socket and nothing else:
 
 | Method | Use |
 | --- | --- |
 | `agent.list` | read every 2 seconds; each agent carries its `position`, or none |
 | `floor.place` | sent when a machine is dropped, moved with the keyboard, or first placed |
+| `terminal.open` | sent when the Terminal pane shows; starts the agent's shell or gives the one that runs |
+| `terminal.read` | a long poll for output past the last offset; the daemon answers when there is some, when the shell exits, or after 10 seconds |
+| `terminal.write` | the keys typed since the last write |
+| `terminal.resize` | the pane's size in cells, 150 ms after it stops changing |
 
-The daemon owns the positions. The window keeps tile size (280 by 160), the 20 px grid and the slot layout, and sends plain pixel coordinates.
+The daemon owns the positions and the shells. The window keeps tile size (280 by 160), the 20 px grid and the slot layout, and sends plain pixel coordinates. The main process decodes each request with the shared schema before it touches the socket and refuses anything else. It waits 5 seconds for an answer, and for `terminal.read` 5 seconds longer than the read's own wait.
 
 ## The floor
 
@@ -71,9 +77,20 @@ The daemon owns the positions. The window keeps tile size (280 by 160), the 20 p
 - The minimap at the bottom right mirrors the floor at 0.15 scale.
 - A phase is shown as the agent wrote it. The lamp knows four words: `planning` and `working` are green and `working` pulses, `review` is amber, `done` is blue. Anything else is grey.
 
+## The terminal
+
+- The Terminal tab of a local agent's workspace shows that agent's shell. The daemon runs it in the agent's folder with the daemon's `SHELL`, so it keeps running when the pane, the workspace or the window closes. It ends when the daemon ends.
+- Opening the pane again replays what the daemon still keeps, the last mebibyte of output, and then follows the shell.
+- Leaving the pane stops reading. Nothing is read for a pane that does not show.
+- Keys go to the shell in the order typed. Keys typed while a write is on its way are joined into the next write.
+- The pane follows its size. A burst of size changes sends one `terminal.resize`.
+- When the shell exits, the pane says so with the exit code and offers "Start a new shell". When the daemon is down or refuses, the pane shows the reason and offers "Try again", and a shell that still runs picks up at the offset it had reached.
+- A cloud task has no shell here. Its pane says so.
+- Colors and the font come from Keel's tokens, read when the terminal mounts and again when the theme changes. Keel has one hue, so the sixteen terminal colors map onto its status inks: red is `danger`, green and cyan are `success`, yellow is `warning`, blue and magenta are `action`.
+
 ## State
 
-One XState machine, `window-machine.ts`, with three parallel regions, and a small `theme-machine.ts`. Each region has an earnest model beside it that uses the machine's state and event names. The charts below are `earnest chart src --max-arrows 12`.
+One XState machine, `window-machine.ts`, with four parallel regions, and a small `theme-machine.ts`. Each region has an earnest model beside it that uses the machine's state and event names. The charts below are `earnest chart src --max-arrows 12`.
 
 ```mermaid
 ---
@@ -150,6 +167,36 @@ stateDiagram-v2
 
 Not shown: 569 of 1358 states and 19 of 31 arrows.
 
+```mermaid
+---
+title: "Terminal"
+---
+stateDiagram-v2
+    state "closed, shell none" as s0
+    state "opening, shell none" as s1
+    state "open, shell running" as s2
+    state "failed, shell none" as s3
+    state "closed, shell running" as s4
+    state "open, shell ended" as s5
+    state "failed, shell running" as s6
+    state "opening, shell running" as s7
+    [*] --> s0
+    s0 --> s1 : terminal.show
+    s1 --> s0 : terminal.hide
+    s1 --> s2 : open done
+    s1 --> s3 : open fails
+    s2 --> s4 : terminal.hide
+    s2 --> s2 : shell writes / terminal.type / read done / write sent
+    s2 --> s5 : shell exits
+    s2 --> s6 : read fails
+    s3 --> s0 : terminal.hide
+    s3 --> s1 : terminal.restart
+    s4 --> s7 : terminal.show
+    s4 --> s4 : shell writes
+```
+
+Not shown: 72 of 259 states and 22 of 34 arrows.
+
 Rules the models check, each also a fast-check property or an example test with the same words:
 
 | Model | Rule |
@@ -165,12 +212,18 @@ Rules the models check, each also a fast-check property or an example test with 
 | Placement | A pending position is dropped only when the daemon agrees or refuses |
 | Placement | After a refused save the tile shows the daemon's position and the reason is shown |
 | Placement | A place is being sent only while one is pending |
+| Terminal | Never two read loops for one terminal |
+| Terminal | Leaving the pane stops reading |
+| Terminal | Bytes are appended in offset order with no gap or duplicate |
+| Terminal | The screen never shows more than the shell wrote |
+| Terminal | No write is sent before open succeeded or after exit |
+| Terminal | An open terminal is the agent's running or just-ended shell |
 
-The models leave out pixel geometry, more than one tile in the placement model, and the theme machine.
+The models leave out pixel geometry, more than one tile in the placement model, the theme machine, the terminal's size and the bytes' content. The terminal model counts at most three bytes and two shells.
 
 ## CSS
 
-- `keel/tokens.css` and `keel/bundle.css` are the only stylesheets, imported once in `main.tsx`. `bundle.css` is Keel's file, byte for byte.
+- `keel/tokens.css` and `keel/bundle.css` are the window's only stylesheets, imported once in `main.tsx`. The one other stylesheet is xterm's own, imported from its package in the same place. `bundle.css` is Keel's file, byte for byte.
 - Keel components use Keel's `k-` classes. `className` is written by hand only for those.
 - Everything else is `stylex.create` beside its component. Colors, shadows, radii and font families come only from `keel/keel-tokens.stylex.ts`, a `defineConsts` module whose values are Keel's existing `var(--name)` references. A test fails when that module and `tokens.css` differ.
 - Lamp tones are a record typed by the model's `LampTone`, so a new tone without a style fails the type check.
@@ -187,7 +240,7 @@ The models leave out pixel geometry, more than one tile in the placement model, 
 3. `effect-tsgo tsc`: every strict flag and every Effect diagnostic at error.
 4. `effect-tsgo tsrs`: the same project through tsrs. It reports the Effect diagnostics too; both run, as in the reference setup.
 5. `earnest verify src`.
-6. `vitest run`: examples, 12 fast-check properties and the contract test against the real `target/debug/wake daemon`.
+6. `vitest run`: examples, 16 fast-check properties and two contract tests against the real `target/debug/wake daemon`, one of them typing into a real `/bin/sh` on the daemon's pseudo-terminal.
 7. `react-doctor`, offline: no score API and no supply-chain scan.
 8. `electron-vite build`.
 
@@ -195,10 +248,11 @@ Gates in `oxlint.config.ts`:
 
 | Files | Banned |
 | --- | --- |
-| all | comments; `useState`, `useReducer`, `useSyncExternalStore`; `memo`, `useCallback`, `useMemo`; importing a `*.model.ts`; importing a stylesheet (except `main.tsx`); `node:net` (except `src/main`) |
+| all | comments; `useState`, `useReducer`, `useSyncExternalStore`; `memo`, `useCallback`, `useMemo`; importing a `*.model.ts`; importing a stylesheet (except `main.tsx`); `@xterm/*` (except `workspace/terminal-host.tsx`); `node:net` (except `src/main`) |
 | views | `useEffect` and its siblings, `xstate`, `@xstate/react`, `electron`, `node:*`, `src/main`, `src/preload` |
 | `window-provider.tsx` | as views, but may import `xstate`, `@xstate/react` and run effects |
 | `theme/theme-attribute.tsx` | as views, but may run effects |
+| `workspace/terminal-host.tsx` | as views, but may run effects and import `@xterm/*` |
 | `*-machine.ts` | React, UI SDK, StyleX, `@xstate/react`, views, DOM globals |
 | `*-model.ts` | the same, and `xstate` |
 | `src/main`, `src/preload` | React, XState, UI SDK, StyleX, `src/renderer`; the preload also `effect` and `node:*` |
@@ -219,7 +273,10 @@ Config files cannot hold comments here, so each relaxed setting has its reason b
 | `unicorn/no-array-method-this-argument` off | it reads Effect's `Array.map(self, f)` as a `thisArg`; Effect's `preferEffectArray` already bans the native methods |
 | `unicorn/throw-new-error` off in `src/main/daemon-client.ts` | `Schema.TaggedError<…>()(…)` is a call that returns the class to extend; the rule reads its name as a missing `new` |
 | Effect `allowedUnstableApis`: `@effect/vitest` | its `it` is tagged unstable; it is the test API for Effects |
-| Effect `nodeBuiltinImport` off in `tests/daemon-contract.test.ts` and `tests/keel-tokens.test.ts` | they start the daemon binary and read source files; Effect's `ChildProcess` and `FileSystem` need a platform layer the window does not ship |
+| Effect `nodeBuiltinImport` off in `tests/daemon-contract.test.ts`, `tests/terminal-contract.test.ts` and `tests/keel-tokens.test.ts` | they start the daemon binary and read source files; Effect's `ChildProcess` and `FileSystem` need a platform layer the window does not ship |
+| `workspace/terminal-host.tsx` runs an effect, holds a ref and imports `@xterm/*` | xterm draws into a DOM node it is handed and is driven by method calls; this one file mounts it, feeds it the machine's output and reports keys and size back. It holds no state |
+| `main.tsx` imports `@xterm/xterm/css/xterm.css` | xterm lays out its rows and cursor with its own stylesheet; it is xterm's file, imported from the package and not copied |
+| The terminal's colors are read from Keel's variables by name in `workspace/terminal-palette-model.ts` | xterm takes color values, not `var()` references, so the typed StyleX token module cannot supply them; a test fails if a name is not in `tokens.css` |
 | `*.model.ts` out of `tsc`, `tsrs` and oxlint | `@earnestjs/model` is not on npm and earnest says not to install it; `earnest verify` reads these files and oxfmt formats them |
 | `lint/` out of oxlint | `wake-styles.mjs` is plain JavaScript that oxlint itself loads; it has no types for syntax nodes; oxfmt formats it |
 | Keel's two stylesheets out of oxfmt | they are Keel's files; `bundle.css` holds Keel's comments and stays byte for byte (sha256 `de133692…`) |
@@ -230,4 +287,4 @@ Config files cannot hold comments here, so each relaxed setting has its reason b
 
 ## Not built yet
 
-The workspace's thread, diff, files, terminal, browser and simulator panes say so on screen. The chief, the inbox, belts between machines and swarms from the design have no daemon data behind them and are not drawn. Packaging the app is not set up; `npm run dev` and `npm start` run it from this folder.
+The workspace's thread, diff, files, browser and simulator panes say so on screen. The chief, the inbox, belts between machines and swarms from the design have no daemon data behind them and are not drawn. Packaging the app is not set up; `npm run dev` and `npm start` run it from this folder.

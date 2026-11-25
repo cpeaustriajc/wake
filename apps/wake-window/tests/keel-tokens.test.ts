@@ -3,6 +3,11 @@ import { readFileSync, readdirSync } from "node:fs";
 import { Array, Order, String } from "effect";
 import { describe, expect, it } from "vitest";
 
+import {
+  FONT_TOKEN,
+  PALETTE_TOKENS,
+} from "#/renderer/workspace/terminal-palette-model.ts";
+
 const KEEL = new URL("../src/renderer/keel/", import.meta.url);
 const SOURCES = new URL("../src/", import.meta.url);
 const DECLARED = /^\s*(?<name>--[a-z0-9-]+):/gmu;
@@ -43,5 +48,18 @@ describe("Keel's tokens", () => {
       "renderer/keel/bundle.css",
       "renderer/keel/tokens.css",
     ]);
+  });
+
+  it("declare every token the terminal's palette and font read", () => {
+    const stylesheet = readFileSync(new URL("tokens.css", KEEL), "utf-8");
+    const declared = names(stylesheet, DECLARED);
+    const read = Array.dedupe([
+      ...Array.map(Array.fromRecord(PALETTE_TOKENS), ([, token]) => token),
+      FONT_TOKEN,
+    ]);
+    expect(
+      Array.filter(read, (token) => !Array.contains(declared, token))
+    ).toStrictEqual([]);
+    expect(read.length).toBeGreaterThan(1);
   });
 });

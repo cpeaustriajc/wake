@@ -13,6 +13,16 @@ import {
 import type { Grip, Layout } from "#/renderer/floor/floor-model.ts";
 import { tilesOf } from "#/renderer/floor/tile-model.ts";
 import type { Tile } from "#/renderer/floor/tile-model.ts";
+import {
+  INITIAL_TERMINAL,
+  NO_TERMINAL_KEY,
+} from "#/renderer/window/terminal-context-model.ts";
+import type {
+  TerminalCells,
+  TerminalContext,
+  TerminalOwner,
+  TerminalShow,
+} from "#/renderer/window/terminal-context-model.ts";
 import type { Agent, Placement } from "#/shared/agent.ts";
 import type { FleetReading, PlaceOutcome } from "#/shared/daemon-answer.ts";
 
@@ -50,6 +60,7 @@ interface WindowContext {
   readonly held: Layout;
   readonly openedKey: string;
   readonly saves: readonly Save[];
+  readonly terminal: TerminalContext;
   readonly trouble: Trouble;
 }
 
@@ -74,9 +85,17 @@ type WindowEvent =
   | (Nudge & { readonly type: "tile.nudge" })
   | (Pointer & { readonly type: "pointer.move" })
   | (Press & { readonly type: "tile.press" })
+  | (TerminalCells & { readonly type: "terminal.fit" })
+  | (TerminalShow & { readonly type: "terminal.show" })
+  | { readonly data: string; readonly type: "terminal.type" }
   | { readonly key: string; readonly type: "tile.click" | "workspace.open" }
   | {
-      readonly type: "fleet.read" | "pointer.release" | "workspace.close";
+      readonly type:
+        | "fleet.read"
+        | "pointer.release"
+        | "terminal.hide"
+        | "terminal.restart"
+        | "workspace.close";
     };
 
 const NO_KEY = "";
@@ -92,6 +111,7 @@ const INITIAL_CONTEXT: WindowContext = {
   held: {},
   openedKey: NO_KEY,
   saves: [],
+  terminal: INITIAL_TERMINAL,
   trouble: NO_TROUBLE,
 };
 
@@ -322,12 +342,37 @@ const saveSettled = ({
 
 const wasPlaced = (outcome: PlaceOutcome): boolean => outcome.kind === "placed";
 
+const NO_OWNER: TerminalOwner = { id: 0, location: "cloud" };
+
+const terminalOwner = (context: WindowContext): TerminalOwner =>
+  Option.match(
+    Array.findFirst(
+      tilesIn(context),
+      (tile) => tile.key === context.terminal.key
+    ),
+    {
+      onNone: () => NO_OWNER,
+      onSome: ({ id, location }) => ({ id, location }),
+    }
+  );
+
+const canShowTerminal = ({ context, key }: WithKey): boolean =>
+  Array.some(
+    tilesIn(context),
+    (tile) => tile.key === key && tile.location === "local"
+  );
+
+const terminalAgentLeft = (context: WindowContext): boolean =>
+  context.terminal.key !== NO_TERMINAL_KEY &&
+  !knowsTile(context, context.terminal.key);
+
 export {
   INITIAL_CONTEXT,
   NO_KEY,
   agentLeft,
   canGrip,
   canOpen,
+  canShowTerminal,
   dragged,
   dropped,
   fleetSettled,
@@ -342,6 +387,8 @@ export {
   reasonOf,
   released,
   saveSettled,
+  terminalAgentLeft,
+  terminalOwner,
   tilesIn,
   wasPlaced,
 };

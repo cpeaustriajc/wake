@@ -185,7 +185,8 @@
           {
             "include": [
               "tests/daemon-contract.test.ts",
-              "tests/keel-tokens.test.ts"
+              "tests/keel-tokens.test.ts",
+              "tests/terminal-contract.test.ts"
             ],
             "options": {
               "diagnosticSeverity": {

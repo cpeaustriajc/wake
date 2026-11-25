@@ -1,10 +1,21 @@
 import { Config, Effect } from "effect";
 import { BrowserWindow, app, ipcMain } from "electron";
 
-import { listAgents, placeOnFloor } from "#/main/daemon-pipe.ts";
+import {
+  listAgents,
+  openTerminal,
+  placeOnFloor,
+  readTerminal,
+  resizeTerminal,
+  writeTerminal,
+} from "#/main/daemon-pipe.ts";
 import {
   LIST_AGENTS_CHANNEL,
+  OPEN_TERMINAL_CHANNEL,
   PLACE_ON_FLOOR_CHANNEL,
+  READ_TERMINAL_CHANNEL,
+  RESIZE_TERMINAL_CHANNEL,
+  WRITE_TERMINAL_CHANNEL,
 } from "#/shared/bridge.ts";
 
 const MINIMUM_HEIGHT = 480;
@@ -43,16 +54,26 @@ const openWindow = (home: string): Promise<void> => {
   return viewer.loadURL(home);
 };
 
+const FORWARDED = [
+  [PLACE_ON_FLOOR_CHANNEL, placeOnFloor],
+  [OPEN_TERMINAL_CHANNEL, openTerminal],
+  [READ_TERMINAL_CHANNEL, readTerminal],
+  [RESIZE_TERMINAL_CHANNEL, resizeTerminal],
+  [WRITE_TERMINAL_CHANNEL, writeTerminal],
+] as const;
+
 ipcMain.handle(LIST_AGENTS_CHANNEL, () =>
   Effect.runPromise(socketPath.pipe(Effect.flatMap(listAgents)))
 );
-ipcMain.handle(PLACE_ON_FLOOR_CHANNEL, (_event, wire: unknown) =>
-  Effect.runPromise(
-    socketPath.pipe(
-      Effect.flatMap((path) => placeOnFloor({ socketPath: path, wire }))
+for (const [channel, forward] of FORWARDED) {
+  ipcMain.handle(channel, (_event, wire: unknown) =>
+    Effect.runPromise(
+      socketPath.pipe(
+        Effect.flatMap((path) => forward({ socketPath: path, wire }))
+      )
     )
-  )
-);
+  );
+}
 app.on("window-all-closed", () => {
   app.quit();
 });

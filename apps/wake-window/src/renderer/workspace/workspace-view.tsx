@@ -7,6 +7,7 @@ import { Lamp } from "#/renderer/floor/lamp.tsx";
 import type { Tile } from "#/renderer/floor/tile-model.ts";
 import { color, font, space } from "#/renderer/keel/keel-tokens.stylex.ts";
 import { useWindowSend } from "#/renderer/window/window-provider.tsx";
+import { TerminalPane } from "#/renderer/workspace/terminal-pane.tsx";
 
 interface Pane {
   readonly label: string;
@@ -37,17 +38,14 @@ const PANES: readonly Pane[] = [
     missing: "No files yet",
     value: "files",
   },
-  {
-    label: "Terminal",
-    later:
-      "A shell in this agent's folder, kept alive by the daemon, comes next.",
-    missing: "No terminal yet",
-    value: "terminal",
-  },
+];
+
+const TERMINAL = "terminal";
+
+const LATER_PANES: readonly Pane[] = [
   {
     label: "Browser",
-    later:
-      "A page view for the app this agent builds comes after the terminal.",
+    later: "A page view for the app this agent builds comes next.",
     missing: "No browser yet",
     value: "browser",
   },
@@ -123,7 +121,7 @@ const EmptyPane = ({ pane }: { readonly pane: Pane }): ReactElement => (
   </div>
 );
 
-const Panes = (): ReactElement => (
+const Panes = ({ tile }: { readonly tile: Tile }): ReactElement => (
   <Tabs {...stylex.props(styles.panes)} defaultValue="diff">
     <div {...stylex.props(styles.tabs)}>
       <TabsList aria-label="Workspace panes" className="k-tabs">
@@ -132,13 +130,24 @@ const Panes = (): ReactElement => (
             {label}
           </TabsTab>
         ))}
+        <TabsTab className="k-tab" value={TERMINAL}>
+          Terminal
+        </TabsTab>
+        {Array.map(LATER_PANES, ({ label, value }) => (
+          <TabsTab className="k-tab" key={value} value={value}>
+            {label}
+          </TabsTab>
+        ))}
       </TabsList>
     </div>
-    {Array.map(PANES, (pane) => (
+    {Array.map([...PANES, ...LATER_PANES], (pane) => (
       <TabsPanel key={pane.value} value={pane.value}>
         <EmptyPane pane={pane} />
       </TabsPanel>
     ))}
+    <TabsPanel value={TERMINAL}>
+      <TerminalPane tile={tile} />
+    </TabsPanel>
   </Tabs>
 );
 
@@ -176,7 +185,7 @@ const WorkspaceView = ({ tile }: { readonly tile: Tile }): ReactElement => {
         <section {...stylex.props(styles.thread)} aria-label="Thread">
           <EmptyPane pane={THREAD} />
         </section>
-        <Panes />
+        <Panes tile={tile} />
       </div>
     </div>
   );
