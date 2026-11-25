@@ -1,5 +1,3 @@
-//! Helpers shared by the git tests.
-
 use std::process::Command;
 
 pub(crate) const REPOSITORY_VARIABLES: [&str; 15] = [
