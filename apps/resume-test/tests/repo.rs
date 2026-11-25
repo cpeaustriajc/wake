@@ -2,11 +2,14 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use wake_resume_test::repo::{commit_events, evidence, init};
 use wake_resume_test::task::{ledger_line, step_content, step_file};
+
+mod support;
+
+use support::git_command;
 
 static NEXT: AtomicUsize = AtomicUsize::new(0);
 
@@ -21,7 +24,7 @@ fn scratch() -> PathBuf {
 }
 
 fn git(folder: &Path, arguments: &[&str]) {
-    let status = Command::new("git")
+    let status = git_command()
         .arg("-C")
         .arg(folder)
         .args(arguments)

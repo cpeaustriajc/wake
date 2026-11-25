@@ -2,10 +2,13 @@
 
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use wake::branch::{BranchError, read_progress};
+
+mod support;
+
+use support::git_command;
 
 static NEXT: AtomicUsize = AtomicUsize::new(0);
 
@@ -27,7 +30,7 @@ impl Drop for Sandbox {
 }
 
 fn git(dir: &Path, args: &[&str]) -> String {
-    let output = Command::new("git")
+    let output = git_command()
         .arg("-C")
         .arg(dir)
         .args(["-c", "user.name=Test", "-c", "user.email=test@example.com"])
@@ -73,7 +76,7 @@ fn sandbox() -> Sandbox {
 
 fn push_progress(sandbox: &Sandbox, branch: &str, text: &str) -> String {
     let worker = &sandbox.worker;
-    let exists = Command::new("git")
+    let exists = git_command()
         .arg("-C")
         .arg(worker)
         .args([
