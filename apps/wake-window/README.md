@@ -24,6 +24,7 @@ cd apps/wake-window && npm ci && npm run dev
 
 - Electron: the main process opens one sandboxed window and forwards two daemon methods. The preload passes the two calls through and runs no library code.
 - React 19 for the views, with `@ui-sdk/react` (UI SDK, in beta) for behavior such as the workspace tabs.
+- React Compiler memoizes components and handlers at build time, through `@vitejs/plugin-react`'s `reactCompilerPreset()` and `@rolldown/plugin-babel`, in the renderer build only.
 - XState 5 for all client state, through `@xstate/react` in one provider file.
 - Effect 4: `Schema` is the single source of the wire types, and the daemon client is an Effect with a scoped socket, a timeout and a tagged error.
 - Keel's stylesheet for Keel components, and StyleX for the window's own styles on a typed module of Keel's tokens.
@@ -194,7 +195,7 @@ Gates in `oxlint.config.ts`:
 
 | Files | Banned |
 | --- | --- |
-| all | comments; `useState`, `useReducer`, `useSyncExternalStore`; importing a `*.model.ts`; importing a stylesheet (except `main.tsx`); `node:net` (except `src/main`) |
+| all | comments; `useState`, `useReducer`, `useSyncExternalStore`; `memo`, `useCallback`, `useMemo`; importing a `*.model.ts`; importing a stylesheet (except `main.tsx`); `node:net` (except `src/main`) |
 | views | `useEffect` and its siblings, `xstate`, `@xstate/react`, `electron`, `node:*`, `src/main`, `src/preload` |
 | `window-provider.tsx` | as views, but may import `xstate`, `@xstate/react` and run effects |
 | `theme/theme-attribute.tsx` | as views, but may run effects |
@@ -224,8 +225,9 @@ Config files cannot hold comments here, so each relaxed setting has its reason b
 | Keel's two stylesheets out of oxfmt | they are Keel's files; `bundle.css` holds Keel's comments and stays byte for byte (sha256 `de133692…`) |
 | tests assert with `assert` from `@effect/vitest` | ultracite's `vitest/no-standalone-expect` does not see `it.effect` as a test block, so `expect` is used only in plain `it` tests |
 | `style-src 'unsafe-inline'` in the page's policy | StyleX dynamic styles set CSS variables in a `style` attribute; scripts stay `'self'` only |
+| React Compiler through `@rolldown/plugin-babel` 0.3 | `reactCompilerPreset()` from `@vitejs/plugin-react` 6 needs this Babel plugin, which is still 0.x |
 | `oxlint` 1.94.0 and `@effect/tsgo` 0.73.4 | ultracite needs oxlint 1.94 or newer and `effect-tsgo` supports up to 1.94 |
 
 ## Not built yet
 
-The workspace's thread, diff, files, terminal, browser and simulator panes say so on screen. The chief, the inbox, belts between machines and swarms from the design have no daemon data behind them and are not drawn. React Compiler is not turned on. Packaging the app is not set up; `npm run dev` and `npm start` run it from this folder.
+The workspace's thread, diff, files, terminal, browser and simulator panes say so on screen. The chief, the inbox, belts between machines and swarms from the design have no daemon data behind them and are not drawn. Packaging the app is not set up; `npm run dev` and `npm start` run it from this folder.

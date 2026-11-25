@@ -31,6 +31,10 @@ probe "a view holds state or runs an effect" "no-restricted-imports" src/rendere
   'import { useEffect, useReducer, useState, useSyncExternalStore } from "react";
 export { useEffect, useReducer, useState, useSyncExternalStore };'
 
+probe "a view memoizes by hand" "no-restricted-imports" src/renderer/probe-view.tsx \
+  'import { memo, useCallback, useMemo } from "react";
+export { memo, useCallback, useMemo };'
+
 probe "a view imports XState" "no-restricted-imports" src/renderer/probe-view.tsx \
   'import { createActorContext } from "@xstate/react";
 import { createActor } from "xstate";
@@ -46,9 +50,9 @@ export const probe = 1;'
 
 probe "a machine imports React, UI SDK or a view" "no-restricted-imports" src/renderer/window/probe-machine.ts \
   'import { Tabs } from "@ui-sdk/react/tabs";
-import { useMemo } from "react";
+import { createElement } from "react";
 import { App } from "#/renderer/app.tsx";
-export { App, Tabs, useMemo };'
+export { App, Tabs, createElement };'
 
 probe "a model imports XState" "no-restricted-imports" src/renderer/floor/probe-model.ts \
   'import { createActor } from "xstate";

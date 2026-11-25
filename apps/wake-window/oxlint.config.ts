@@ -16,6 +16,7 @@ interface PatternBan {
 
 const SOCKETS = "Only src/main opens sockets.";
 const STATE = "Client state lives in the XState machines.";
+const COMPILER = "React Compiler memoizes components and handlers.";
 const EFFECTS = "Only the provider and the theme attribute run effects.";
 const MACHINES = "Only *-machine.ts and the provider import XState.";
 const VIEWS = "Only views import React, UI SDK and StyleX.";
@@ -31,6 +32,11 @@ const reactState: readonly PathBan[] = [
   {
     importNames: ["useState", "useReducer", "useSyncExternalStore"],
     message: STATE,
+    name: "react",
+  },
+  {
+    importNames: ["memo", "useCallback", "useMemo"],
+    message: COMPILER,
     name: "react",
   },
 ];

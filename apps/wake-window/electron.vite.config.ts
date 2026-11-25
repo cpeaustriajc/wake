@@ -1,5 +1,6 @@
+import babel from "@rolldown/plugin-babel";
 import stylex from "@stylexjs/unplugin/vite";
-import react from "@vitejs/plugin-react";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { defineConfig } from "electron-vite";
 import type { Plugin } from "vite";
 
@@ -21,6 +22,10 @@ export default defineConfig({
   },
   renderer: {
     optimizeDeps: { exclude: ["@ui-sdk/core"] },
-    plugins: [...(isPlugin(stylexPlugin) ? [stylexPlugin] : []), react()],
+    plugins: [
+      ...(isPlugin(stylexPlugin) ? [stylexPlugin] : []),
+      react(),
+      babel({ presets: [reactCompilerPreset()] }),
+    ],
   },
 });

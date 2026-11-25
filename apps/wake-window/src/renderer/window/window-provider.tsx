@@ -1,6 +1,5 @@
 import { createActorContext } from "@xstate/react";
 import { Clock, Effect } from "effect";
-import { useCallback, useMemo } from "react";
 import type { ReactElement, ReactNode } from "react";
 
 import {
@@ -25,9 +24,17 @@ import {
   decodePlaceOutcome,
 } from "#/shared/daemon-answer.ts";
 
+interface ThemeOptions {
+  readonly input: {
+    readonly stored: string | null;
+    readonly systemDark: boolean;
+  };
+}
+
 interface WindowProviderProps {
-  readonly bridge: WakeBridge;
   readonly children: ReactNode;
+  readonly logic: typeof windowMachine;
+  readonly themeOptions: ThemeOptions;
 }
 
 type ThemeEvent = Parameters<
@@ -55,26 +62,25 @@ const ioOf = (bridge: WakeBridge): WindowIo => ({
     ),
 });
 
+const windowLogicFor = (bridge: WakeBridge): typeof windowMachine =>
+  windowMachineWith(ioOf(bridge));
+
+const themeOptionsNow = (): ThemeOptions => ({
+  input: {
+    stored: localStorage.getItem(THEME_KEY),
+    systemDark: globalThis.matchMedia(DARK_QUERY).matches,
+  },
+});
+
 const WindowProvider = ({
-  bridge,
   children,
-}: WindowProviderProps): ReactElement => {
-  const logic = useMemo(() => windowMachineWith(ioOf(bridge)), [bridge]);
-  const themeOptions = useMemo(
-    () => ({
-      input: {
-        stored: localStorage.getItem(THEME_KEY),
-        systemDark: globalThis.matchMedia(DARK_QUERY).matches,
-      },
-    }),
-    []
-  );
-  return (
-    <ThemeActor.Provider options={themeOptions}>
-      <WindowActor.Provider logic={logic}>{children}</WindowActor.Provider>
-    </ThemeActor.Provider>
-  );
-};
+  logic,
+  themeOptions,
+}: WindowProviderProps): ReactElement => (
+  <ThemeActor.Provider options={themeOptions}>
+    <WindowActor.Provider logic={logic}>{children}</WindowActor.Provider>
+  </ThemeActor.Provider>
+);
 
 const useWindow = <Selected,>(
   selector: (snapshot: WindowSnapshot) => Selected
@@ -82,12 +88,9 @@ const useWindow = <Selected,>(
 
 const useWindowSend = (): ((event: WindowEvent) => void) => {
   const actor = WindowActor.useActorRef();
-  return useCallback(
-    (event: WindowEvent) => {
-      actor.send(event);
-    },
-    [actor]
-  );
+  return (event: WindowEvent) => {
+    actor.send(event);
+  };
 };
 
 const useTheme = (): Theme => ThemeActor.useSelector(themeIn);
@@ -96,19 +99,18 @@ const usePickedTheme = (): Theme | null => ThemeActor.useSelector(pickedIn);
 
 const useThemeSend = (): ((event: ThemeEvent) => void) => {
   const actor = ThemeActor.useActorRef();
-  return useCallback(
-    (event: ThemeEvent) => {
-      actor.send(event);
-    },
-    [actor]
-  );
+  return (event: ThemeEvent) => {
+    actor.send(event);
+  };
 };
 
 export {
   WindowProvider,
+  themeOptionsNow,
   usePickedTheme,
   useTheme,
   useThemeSend,
   useWindow,
   useWindowSend,
+  windowLogicFor,
 };
