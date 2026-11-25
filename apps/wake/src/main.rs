@@ -1,7 +1,8 @@
-//! The `wake` command: the daemon, the reload hook, starting an agent and listing agents.
+//! The `wake` command: the daemon, the reload hook, starting an agent, tracking a cloud task and listing agents.
 
 mod agent;
 mod agents;
+mod cloud;
 mod daemon;
 mod hook;
 mod paths;
@@ -14,6 +15,7 @@ const USAGE: &str = "usage:
   wake daemon
   wake hook reload
   wake agent start <folder> [message...]
+  wake cloud track <branch>
   wake agents";
 
 fn main() -> ExitCode {
@@ -23,6 +25,7 @@ fn main() -> ExitCode {
         ["daemon"] => daemon::run(),
         ["hook", "reload"] => Ok(hook::reload()),
         ["agent", "start", folder, messages @ ..] => agent::start(folder, messages),
+        ["cloud", "track", branch] => cloud::track(branch),
         ["agents"] => agents::run(),
         _ => Err(USAGE.to_owned()),
     };

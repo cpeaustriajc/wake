@@ -7,21 +7,32 @@ use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::Path;
 use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::thread;
+use std::time::Duration;
 
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 
 use crate::agents::entry;
+use crate::cloud::CloudReader;
 use crate::error::Error;
 use crate::protocol::{
-    AgentEntry, AgentList, AgentRegistration, CompactionReport, INTERNAL_ERROR, INVALID_PARAMS,
-    LIST_AGENTS, Location, METHOD_NOT_FOUND, PARSE_ERROR, RECORD_COMPACTION, REGISTER_AGENT,
-    Request, Response, VERSION,
+    AgentEntry, AgentList, AgentRegistration, CloudTracking, CompactionReport, INTERNAL_ERROR,
+    INVALID_PARAMS, LIST_AGENTS, Location, METHOD_NOT_FOUND, PARSE_ERROR, RECORD_COMPACTION,
+    REGISTER_AGENT, Request, Response, TRACK_CLOUD_TASK, VERSION,
 };
 use crate::store::Store;
 
 const SOCKET_MODE: u32 = 0o600;
+/// How long the daemon waits between two reads of the tracked cloud branches
+/// when [`serve`] runs it.
+pub const DEFAULT_POLL_INTERVAL: Duration = Duration::from_secs(15);
+
+#[derive(Debug)]
+struct Shared {
+    store: Mutex<Store>,
+    cloud: CloudReader,
+}
 
 /// Starts listening on `path`, replacing a socket file left by a daemon that
 /// is no longer running. Only the current user can connect.
@@ -44,27 +55,59 @@ pub fn bind(path: &Path) -> Result<UnixListener, Error> {
     Ok(listener)
 }
 
-/// Answers requests on `listener` until it fails, one thread per connection.
+/// Answers requests on `listener` until it fails, one thread per connection,
+/// and reads the tracked cloud branches every [`DEFAULT_POLL_INTERVAL`].
 ///
 /// # Errors
 ///
 /// Returns [`Error::Io`] if accepting a connection fails.
 pub fn serve(listener: &UnixListener, store: Store) -> Result<(), Error> {
-    let store = Arc::new(Mutex::new(store));
+    serve_polling(listener, store, DEFAULT_POLL_INTERVAL)
+}
+
+/// Does what [`serve`] does, reading the tracked cloud branches every
+/// `interval`. The first read starts at once, and a branch is read once more
+/// the moment it is tracked. `agent.list` answers from the latest read and
+/// runs no `git` command.
+///
+/// # Errors
+///
+/// Returns [`Error::Io`] if accepting a connection fails.
+pub fn serve_polling(
+    listener: &UnixListener,
+    store: Store,
+    interval: Duration,
+) -> Result<(), Error> {
+    let shared = Arc::new(Shared {
+        store: Mutex::new(store),
+        cloud: CloudReader::default(),
+    });
+    let poller = Arc::clone(&shared);
+    thread::spawn(move || poll(&poller, interval));
     for stream in listener.incoming() {
         let stream = stream?;
-        let store = Arc::clone(&store);
+        let shared = Arc::clone(&shared);
         thread::spawn(move || {
-            let _ = handle(stream, &store);
+            let _ = handle(stream, &shared);
         });
     }
     Ok(())
 }
 
-fn handle(stream: UnixStream, store: &Mutex<Store>) -> Result<(), Error> {
+fn poll(shared: &Shared, interval: Duration) {
+    loop {
+        let tasks = lock(&shared.store).cloud_tasks();
+        for task in tasks.unwrap_or_default() {
+            shared.cloud.read(&task.folder, &task.branch);
+        }
+        thread::sleep(interval);
+    }
+}
+
+fn handle(stream: UnixStream, shared: &Shared) -> Result<(), Error> {
     let mut writer = stream.try_clone()?;
     for line in BufReader::new(stream).lines() {
-        let response = answer(&line?, store);
+        let response = answer(&line?, shared);
         writeln!(writer, "{}", serde_json::to_string(&response)?)?;
     }
     Ok(())
@@ -81,7 +124,7 @@ fn reply<T: Serialize>(id: u64, outcome: Result<T, Error>) -> Response {
     }
 }
 
-fn answer(line: &str, store: &Mutex<Store>) -> Response {
+fn answer(line: &str, shared: &Shared) -> Response {
     let request: Request = match serde_json::from_str(line) {
         Ok(request) => request,
         Err(error) => return Response::failure(0, PARSE_ERROR, error.to_string()),
@@ -96,24 +139,46 @@ fn answer(line: &str, store: &Mutex<Store>) -> Response {
     }
     match request.method.as_str() {
         RECORD_COMPACTION => with_params(id, request.params, |report: CompactionReport| {
-            let stored = lock(store).record_compaction(&report);
+            let stored = lock(&shared.store).record_compaction(&report);
             reply(id, stored.map(|row| json!({ "id": row })))
         }),
         REGISTER_AGENT => with_params(id, request.params, |agent: AgentRegistration| {
-            let stored = lock(store).register_agent(&agent.folder, Location::Local);
+            let stored = lock(&shared.store).register_agent(&agent.folder, Location::Local);
+            reply(id, stored.map(|row| json!({ "id": row })))
+        }),
+        TRACK_CLOUD_TASK => with_params(id, request.params, |tracking: CloudTracking| {
+            if let Some(problem) = branch_problem(&tracking.branch) {
+                return Response::failure(id, INVALID_PARAMS, problem);
+            }
+            let stored = lock(&shared.store).track_cloud_task(&tracking.folder, &tracking.branch);
+            if stored.is_ok() {
+                shared.cloud.read(&tracking.folder, &tracking.branch);
+            }
             reply(id, stored.map(|row| json!({ "id": row })))
         }),
         LIST_AGENTS => {
-            let stored = lock(store).agents();
+            let (local, cloud) = {
+                let store = lock(&shared.store);
+                (store.agents(), store.cloud_tasks())
+            };
             reply(
                 id,
-                stored.map(|agents| AgentList {
-                    agents: agents.into_iter().map(entry).collect(),
+                local.and_then(|local| {
+                    let mut agents: Vec<AgentEntry> = local.into_iter().map(entry).collect();
+                    agents.extend(cloud?.into_iter().map(|task| shared.cloud.entry(task)));
+                    Ok(AgentList { agents })
                 }),
             )
         }
         method => Response::failure(id, METHOD_NOT_FOUND, format!("unknown method `{method}`")),
     }
+}
+
+fn branch_problem(branch: &str) -> Option<String> {
+    let unusable =
+        |character: char| character.is_whitespace() || character.is_control() || character == ':';
+    (branch.is_empty() || branch.contains(unusable))
+        .then(|| format!("`{branch}` is not a branch name"))
 }
 
 fn with_params<T: DeserializeOwned>(
@@ -181,9 +246,11 @@ pub fn register_agent(socket: &Path, folder: &str) -> Result<i64, Error> {
     row_id(&call(socket, REGISTER_AGENT, &json!(registration))?)
 }
 
-/// Asks the daemon at `socket` for every agent it knows, oldest first. The
-/// daemon reads each agent's progress file when it answers, so a file that
-/// changed since the last call shows its new content.
+/// Asks the daemon at `socket` for every agent it knows: local agents oldest
+/// first, then cloud tasks oldest first. The daemon reads each local agent's
+/// progress file when it answers, so a file that changed since the last call
+/// shows its new content. A cloud task shows what the daemon read from its
+/// branch in the latest polling round.
 ///
 /// # Errors
 ///
@@ -193,4 +260,22 @@ pub fn register_agent(socket: &Path, folder: &str) -> Result<i64, Error> {
 pub fn list_agents(socket: &Path) -> Result<Vec<AgentEntry>, Error> {
     let list: AgentList = serde_json::from_value(call(socket, LIST_AGENTS, &Value::Null)?)?;
     Ok(list.agents)
+}
+
+/// Tells the daemon at `socket` to follow the cloud task that pushes to
+/// `branch` on the remote `origin` of the repository in `folder`, and returns
+/// the task's ID. The daemon reads the branch before it answers. Tracking the
+/// same folder and branch again returns the same ID.
+///
+/// # Errors
+///
+/// Returns [`Error::Io`] if the daemon cannot be reached, [`Error::Rpc`] if it
+/// answers with an error, such as for a branch name that no branch can have,
+/// and [`Error::NoResponse`] if it hangs up.
+pub fn track_cloud_task(socket: &Path, folder: &str, branch: &str) -> Result<i64, Error> {
+    let tracking = CloudTracking {
+        folder: folder.to_owned(),
+        branch: branch.to_owned(),
+    };
+    row_id(&call(socket, TRACK_CLOUD_TASK, &json!(tracking))?)
 }

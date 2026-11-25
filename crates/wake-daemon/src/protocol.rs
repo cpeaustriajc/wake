@@ -11,6 +11,8 @@ pub const RECORD_COMPACTION: &str = "compaction.record";
 pub const REGISTER_AGENT: &str = "agent.register";
 /// The method that lists every agent the daemon knows.
 pub const LIST_AGENTS: &str = "agent.list";
+/// The method that tells the daemon to follow a cloud task's branch.
+pub const TRACK_CLOUD_TASK: &str = "cloud.track";
 
 /// The request was not valid JSON.
 pub const PARSE_ERROR: i64 = -32700;
@@ -110,6 +112,17 @@ pub struct AgentRegistration {
     pub folder: String,
 }
 
+/// The parameters of [`TRACK_CLOUD_TASK`]. Tracking a folder and branch that are
+/// already tracked keeps the task and its ID.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CloudTracking {
+    /// The folder of the repository whose remote `origin` holds the branch, as
+    /// an absolute path.
+    pub folder: String,
+    /// The branch the cloud task pushes to.
+    pub branch: String,
+}
+
 /// What the daemon read from an agent's progress file when it built the list.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "state", rename_all = "snake_case")]
@@ -131,24 +144,45 @@ pub enum AgentProgress {
         /// Why the file was rejected.
         reason: String,
     },
+    /// A cloud task's branch is not on the remote yet. A cloud task pushes its
+    /// first commit minutes after it starts, so this is a normal state.
+    BranchMissing,
+    /// A cloud task's remote could not be read, for example when the network is
+    /// down.
+    Unreachable {
+        /// What `git` reported.
+        reason: String,
+    },
+    /// The daemon has not read a cloud task's branch yet since it started.
+    Pending,
 }
 
 /// One agent in the answer to [`LIST_AGENTS`].
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AgentEntry {
-    /// The agent's ID, which stays the same across daemon restarts.
+    /// The agent's ID, which stays the same across daemon restarts. An ID is
+    /// unique only together with `location`: a local agent and a cloud task can
+    /// share one.
     pub id: i64,
-    /// The folder the agent works in.
+    /// The folder the agent works in, or for a cloud task the folder of the
+    /// repository that holds its branch.
     pub folder: String,
     /// Where the agent runs.
     pub location: Location,
-    /// When the daemon last registered the agent, in Unix seconds.
+    /// The branch a cloud task pushes to; `None` for a local agent.
+    #[serde(default)]
+    pub branch: Option<String>,
+    /// When the daemon last registered a local agent, or first tracked a cloud
+    /// task, in Unix seconds.
     pub started_at: i64,
-    /// What the agent's progress file said at the time of the call.
+    /// What the agent's progress file said when the daemon last read it: at the
+    /// time of the call for a local agent, within one polling interval for a
+    /// cloud task.
     pub progress: AgentProgress,
 }
 
-/// The result of [`LIST_AGENTS`], oldest agent first.
+/// The result of [`LIST_AGENTS`]: local agents oldest first, then cloud tasks
+/// oldest first.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AgentList {
     /// Every agent the daemon knows.

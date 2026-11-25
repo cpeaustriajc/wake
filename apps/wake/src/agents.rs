@@ -8,6 +8,9 @@ use crate::paths;
 
 const NO_FILE_LABEL: &str = "(no progress file)";
 const INVALID_FILE_LABEL: &str = "(invalid progress file)";
+const BRANCH_MISSING_LABEL: &str = "(branch not pushed yet)";
+const UNREACHABLE_LABEL: &str = "(cannot read the remote)";
+const PENDING_LABEL: &str = "(not read yet)";
 const NOT_AVAILABLE: &str = "-";
 
 pub(crate) fn daemon_down(socket: &std::path::Path, error: &Error) -> String {
@@ -20,6 +23,16 @@ pub(crate) fn daemon_down(socket: &std::path::Path, error: &Error) -> String {
     }
 }
 
+fn plain_label(progress: &AgentProgress) -> &'static str {
+    match progress {
+        AgentProgress::Missing => NO_FILE_LABEL,
+        AgentProgress::BranchMissing => BRANCH_MISSING_LABEL,
+        AgentProgress::Unreachable { .. } => UNREACHABLE_LABEL,
+        AgentProgress::Pending => PENDING_LABEL,
+        _ => INVALID_FILE_LABEL,
+    }
+}
+
 fn columns(entry: &AgentEntry) -> [String; 5] {
     let (headline, phase, updated) = match &entry.progress {
         AgentProgress::Found {
@@ -27,23 +40,22 @@ fn columns(entry: &AgentEntry) -> [String; 5] {
             phase,
             updated,
         } => (headline.clone(), phase.clone(), updated.clone()),
-        AgentProgress::Missing => (
-            NO_FILE_LABEL.to_owned(),
+        other => (
+            plain_label(other).to_owned(),
             NOT_AVAILABLE.to_owned(),
             NOT_AVAILABLE.to_owned(),
         ),
-        _ => (
-            INVALID_FILE_LABEL.to_owned(),
-            NOT_AVAILABLE.to_owned(),
-            NOT_AVAILABLE.to_owned(),
-        ),
+    };
+    let place = match &entry.branch {
+        Some(branch) => format!("{} (branch {branch})", entry.folder),
+        None => entry.folder.clone(),
     };
     [
         headline,
         phase,
         updated,
         entry.location.as_str().to_owned(),
-        entry.folder.clone(),
+        place,
     ]
 }
 
