@@ -1,78 +1,179 @@
-import { CloudIcon } from "#/renderer/floor/cloud-icon.tsx";
-import type { JSX } from "@solidjs/web";
-import { Lamp } from "#/renderer/floor/lamp.tsx";
-import type { Position } from "#/renderer/floor/floor-model.ts";
-import { Show } from "solid-js";
-import type { Tile } from "#/renderer/floor/tile-model.ts";
+import * as stylex from "@stylexjs/stylex";
+import type { KeyboardEvent, PointerEvent, ReactElement } from "react";
 
-interface MachineTileProperties {
-  readonly onDrag: (clientX: number, clientY: number) => void;
-  readonly onGrab: (key: string, clientX: number, clientY: number) => void;
-  readonly onNudge: (key: string, stepsX: number, stepsY: number) => void;
-  readonly onOpen: (key: string) => void;
-  readonly onRelease: (key: string) => void;
+import { CloudIcon } from "#/renderer/floor/cloud-icon.tsx";
+import { MACHINE_HEIGHT, MACHINE_WIDTH } from "#/renderer/floor/floor-model.ts";
+import { Lamp } from "#/renderer/floor/lamp.tsx";
+import type { Tile } from "#/renderer/floor/tile-model.ts";
+import {
+  color,
+  font,
+  radius,
+  shadow,
+  space,
+} from "#/renderer/keel/keel-tokens.stylex.ts";
+import type { WindowEvent } from "#/renderer/window/window-context-model.ts";
+import type { Position } from "#/shared/agent.ts";
+
+interface MachineTileProps {
+  readonly onEvent: (event: WindowEvent) => void;
   readonly position: Position;
   readonly tile: Tile;
 }
 
-const AHEAD = 1;
-const BACK = -1;
-const STAY = 0;
-
 const NUDGES: Readonly<Record<string, readonly [number, number]>> = {
-  ArrowDown: [STAY, AHEAD],
-  ArrowLeft: [BACK, STAY],
-  ArrowRight: [AHEAD, STAY],
-  ArrowUp: [STAY, BACK],
+  ArrowDown: [0, 1],
+  ArrowLeft: [-1, 0],
+  ArrowRight: [1, 0],
+  ArrowUp: [0, -1],
 };
 
-const MachineTile = (properties: MachineTileProperties): JSX.Element => (
-  <button
-    type="button"
-    class="wk-tile"
-    style={{ left: `${properties.position.left}px`, top: `${properties.position.top}px` }}
-    aria-label={`${properties.tile.key}, ${properties.tile.headline}, ${properties.tile.status}, ${properties.tile.place}`}
-    aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight"
-    onClick={() => {
-      properties.onOpen(properties.tile.key);
-    }}
-    onPointerDown={(event) => {
-      event.currentTarget.setPointerCapture(event.pointerId);
-      properties.onGrab(properties.tile.key, event.clientX, event.clientY);
-    }}
-    onPointerMove={(event) => {
-      properties.onDrag(event.clientX, event.clientY);
-    }}
-    onPointerUp={() => {
-      properties.onRelease(properties.tile.key);
-    }}
-    onPointerCancel={() => {
-      properties.onRelease(properties.tile.key);
-    }}
-    onKeyDown={(event) => {
-      const nudge = NUDGES[event.key];
-      if (event.altKey && nudge) {
-        event.preventDefault();
-        properties.onNudge(properties.tile.key, ...nudge);
-      }
-    }}
-  >
-    <span class="wk-tile__head">
-      <span class="wk-tile__who">
-        <Lamp tone={properties.tile.lamp} live={properties.tile.live} />
-        <span class="wk-id">{properties.tile.key}</span>
-        <Show when={properties.tile.location === "cloud"}>
-          <CloudIcon />
-        </Show>
+const styles = stylex.create({
+  foot: {
+    alignItems: "center",
+    color: color.inkMuted,
+    display: "flex",
+    fontFamily: font.mono,
+    fontSize: 11,
+    fontWeight: 500,
+    gap: 6,
+    lineHeight: "16px",
+    marginTop: "auto",
+  },
+  head: {
+    alignItems: "center",
+    display: "flex",
+    gap: space.s2,
+    justifyContent: "space-between",
+  },
+  headline: {
+    fontFamily: font.sans,
+    fontSize: 14,
+    fontWeight: 600,
+    lineHeight: "20px",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  id: {
+    fontFamily: font.mono,
+    fontSize: 12,
+    fontWeight: 500,
+    lineHeight: "16px",
+  },
+  note: {
+    color: color.inkMuted,
+    fontFamily: font.mono,
+    fontSize: 12,
+    fontWeight: 400,
+    lineHeight: "16px",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+  },
+  place: (x: number, y: number, width: number, height: number) => ({
+    height,
+    left: x,
+    top: y,
+    width,
+  }),
+  status: {
+    color: color.inkMuted,
+    fontSize: 12,
+    lineHeight: "16px",
+    whiteSpace: "nowrap",
+  },
+  tile: {
+    appearance: "none",
+    backgroundImage: `linear-gradient(180deg, ${color.control}, ${color.controlLo})`,
+    borderColor: color.edgeStrong,
+    borderRadius: radius.panel,
+    borderStyle: "solid",
+    borderWidth: 1,
+    boxShadow: shadow.control,
+    boxSizing: "border-box",
+    color: color.ink,
+    cursor: "pointer",
+    display: "flex",
+    filter: { ":hover": "brightness(1.04)", default: null },
+    flexDirection: "column",
+    gap: space.s2,
+    margin: 0,
+    overflow: "hidden",
+    padding: space.s3,
+    position: "absolute",
+    textAlign: "left",
+    touchAction: "none",
+    userSelect: "none",
+  },
+  who: { alignItems: "center", display: "flex", gap: 6, minWidth: 0 },
+});
+
+const MachineTile = ({
+  onEvent,
+  position,
+  tile,
+}: MachineTileProps): ReactElement => {
+  const { key } = tile;
+  const handlePointerDown = (event: PointerEvent<HTMLButtonElement>): void => {
+    event.currentTarget.setPointerCapture(event.pointerId);
+    onEvent({
+      clientX: event.clientX,
+      clientY: event.clientY,
+      key,
+      type: "tile.press",
+    });
+  };
+  const handlePointerMove = (event: PointerEvent<HTMLButtonElement>): void => {
+    onEvent({
+      clientX: event.clientX,
+      clientY: event.clientY,
+      type: "pointer.move",
+    });
+  };
+  const handleRelease = (): void => {
+    onEvent({ type: "pointer.release" });
+  };
+  const handleClick = (): void => {
+    onEvent({ key, type: "tile.click" });
+  };
+  const handleKeyDown = (event: KeyboardEvent<HTMLButtonElement>): void => {
+    const nudge = NUDGES[event.key];
+    if (event.altKey && nudge !== undefined) {
+      event.preventDefault();
+      onEvent({ key, stepsX: nudge[0], stepsY: nudge[1], type: "tile.nudge" });
+    }
+  };
+  return (
+    <button
+      {...stylex.props(
+        styles.tile,
+        styles.place(position.x, position.y, MACHINE_WIDTH, MACHINE_HEIGHT)
+      )}
+      aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight"
+      aria-label={`${key}, ${tile.headline}, ${tile.status}, ${tile.place}`}
+      data-machine={key}
+      onClick={handleClick}
+      onKeyDown={handleKeyDown}
+      onPointerCancel={handleRelease}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handleRelease}
+      type="button"
+    >
+      <span {...stylex.props(styles.head)}>
+        <span {...stylex.props(styles.who)}>
+          <Lamp live={tile.live} tone={tile.lamp} />
+          <span {...stylex.props(styles.id)}>{key}</span>
+          {tile.location === "cloud" ? <CloudIcon /> : null}
+        </span>
+        <span {...stylex.props(styles.status)}>{tile.status}</span>
       </span>
-      <span class="wk-status">{properties.tile.status}</span>
-    </span>
-    <span class="wk-headline">{properties.tile.headline}</span>
-    <span class="wk-note">{properties.tile.note}</span>
-    <span class="wk-tile__foot">
-      <span class="wk-when">{properties.tile.when}</span>
-    </span>
-  </button>
-);
+      <span {...stylex.props(styles.headline)}>{tile.headline}</span>
+      <span {...stylex.props(styles.note)}>{tile.note}</span>
+      <span {...stylex.props(styles.foot)}>{tile.when}</span>
+    </button>
+  );
+};
 
 export { MachineTile };

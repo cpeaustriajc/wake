@@ -1,25 +1,22 @@
 type Theme = "dark" | "light";
 
+interface ThemeInput {
+  readonly stored: string | null;
+  readonly systemDark: boolean;
+}
+
 const THEME_KEY = "keel-theme";
-
-const themeOf = (picked: unknown, systemDark: boolean): Theme => {
-  if (picked === "dark" || picked === "light") {
-    return picked;
-  }
-  if (systemDark) {
-    return "dark";
-  }
-  return "light";
+const DARK_QUERY = "(prefers-color-scheme: dark)";
+const THEME_LABELS: Readonly<Record<Theme, string>> = {
+  dark: "Dark",
+  light: "Light",
 };
 
-const otherTheme = (theme: Theme): Theme => {
-  if (theme === "dark") {
-    return "light";
-  }
-  return "dark";
-};
+const systemTheme = (systemDark: boolean): Theme =>
+  systemDark ? "dark" : "light";
 
-const THEME_LABELS: Readonly<Record<Theme, string>> = { dark: "Dark", light: "Light" };
+const otherTheme = (theme: Theme): Theme =>
+  theme === "dark" ? "light" : "dark";
 
-export { THEME_KEY, THEME_LABELS, otherTheme, themeOf };
-export type { Theme };
+export { DARK_QUERY, THEME_KEY, THEME_LABELS, otherTheme, systemTheme };
+export type { Theme, ThemeInput };

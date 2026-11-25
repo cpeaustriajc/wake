@@ -1,26 +1,32 @@
-import { decodeFloorPlacement, placementParameters } from "#/shared/floor-placement.ts";
-import type { DaemonAnswer } from "#/shared/daemon-answer.ts";
+import { Effect, Schema } from "effect";
+
 import { askDaemon } from "#/main/daemon-client.ts";
+import { FloorPlacement } from "#/shared/agent.ts";
+import type { Answer } from "#/shared/daemon-answer.ts";
 
 const LIST_AGENTS_METHOD = "agent.list";
 const PLACE_ON_FLOOR_METHOD = "floor.place";
 
-const listAgents = async (socketPath: string): Promise<DaemonAnswer> => {
-  const answer = await askDaemon(socketPath, LIST_AGENTS_METHOD, {});
-  return answer;
-};
+const listAgents = (socketPath: string): Effect.Effect<Answer> =>
+  askDaemon({ method: LIST_AGENTS_METHOD, params: {}, socketPath });
 
-const placeOnFloor = async (socketPath: string, wire: unknown): Promise<DaemonAnswer> => {
-  const placement = decodeFloorPlacement(wire);
-  if (!placement.ok) {
-    return { kind: "refused", reason: placement.problem };
-  }
-  const answer = await askDaemon(
-    socketPath,
-    PLACE_ON_FLOOR_METHOD,
-    placementParameters(placement.value),
+interface Request {
+  readonly socketPath: string;
+  readonly wire: unknown;
+}
+
+const placeOnFloor = ({ socketPath, wire }: Request): Effect.Effect<Answer> =>
+  Schema.decodeUnknownEffect(FloorPlacement)(wire).pipe(
+    Effect.flatMap((placement) =>
+      askDaemon({
+        method: PLACE_ON_FLOOR_METHOD,
+        params: placement,
+        socketPath,
+      })
+    ),
+    Effect.catchTag("SchemaError", ({ message }) =>
+      Effect.succeed<Answer>({ kind: "refused", reason: message })
+    )
   );
-  return answer;
-};
 
 export { listAgents, placeOnFloor };

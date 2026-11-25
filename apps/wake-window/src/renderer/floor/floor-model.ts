@@ -1,15 +1,12 @@
-import type { FloorSpot } from "#/shared/agent.ts";
+import { Array, Option, Record } from "effect";
 
-interface Position {
-  readonly left: number;
-  readonly top: number;
-}
+import type { Position } from "#/shared/agent.ts";
 
-type Layout = Readonly<Record<string, Position>>;
+type Layout = Record.ReadonlyRecord<string, Position>;
 
 interface Machine {
   readonly key: string;
-  readonly spot: FloorSpot;
+  readonly spot: Position | null;
 }
 
 interface Mark {
@@ -29,145 +26,175 @@ interface Grip {
 const COLUMNS = 3;
 const DRAG_THRESHOLD = 5;
 const EMPTY_LAYOUT: Layout = {};
-const FIRST_SLOT = 0;
-const FLOOR_EDGE = 0;
 const GRID_STEP = 20;
 const MACHINE_HEIGHT = 160;
 const MACHINE_WIDTH = 280;
 const MAP_INSET = 3;
 const MAP_SCALE = 0.15;
-const NEXT_SLOT = 1;
 const ORIGIN = 40;
-const PITCH_LEFT = 320;
-const PITCH_TOP = 220;
+const PITCH_X = 320;
+const PITCH_Y = 220;
 
 const snapped = (value: number): number =>
-  Math.max(FLOOR_EDGE, Math.round(value / GRID_STEP) * GRID_STEP);
+  Math.max(0, Math.round(value / GRID_STEP) * GRID_STEP);
 
-const movedBy = (from: Position, deltaLeft: number, deltaTop: number): Position => ({
-  left: snapped(from.left + deltaLeft),
-  top: snapped(from.top + deltaTop),
+interface Move {
+  readonly deltaX: number;
+  readonly deltaY: number;
+  readonly from: Position;
+}
+
+interface Pull {
+  readonly clientX: number;
+  readonly clientY: number;
+  readonly grip: Grip;
+}
+
+const movedBy = ({ deltaX, deltaY, from }: Move): Position => ({
+  x: snapped(from.x + deltaX),
+  y: snapped(from.y + deltaY),
 });
 
 const stepsToPixels = (steps: number): number => steps * GRID_STEP;
 
-const pulledPast = (grip: Grip, clientX: number, clientY: number): boolean =>
-  Math.abs(clientX - grip.startX) + Math.abs(clientY - grip.startY) >= DRAG_THRESHOLD;
+const pulledPast = ({ clientX, clientY, grip }: Pull): boolean =>
+  Math.abs(clientX - grip.startX) + Math.abs(clientY - grip.startY) >=
+  DRAG_THRESHOLD;
 
-const draggedTo = (grip: Grip, clientX: number, clientY: number): Position =>
-  movedBy(grip.origin, clientX - grip.startX, clientY - grip.startY);
+const draggedTo = ({ clientX, clientY, grip }: Pull): Position =>
+  movedBy({
+    deltaX: clientX - grip.startX,
+    deltaY: clientY - grip.startY,
+    from: grip.origin,
+  });
 
 const slotAt = (index: number): Position => ({
-  left: ORIGIN + (index % COLUMNS) * PITCH_LEFT,
-  top: ORIGIN + Math.floor(index / COLUMNS) * PITCH_TOP,
+  x: ORIGIN + (index % COLUMNS) * PITCH_X,
+  y: ORIGIN + Math.floor(index / COLUMNS) * PITCH_Y,
 });
 
 const firstSlots = (count: number): readonly Position[] =>
-  [...Array.from({ length: count }).keys()].map((index) => slotAt(index));
+  Array.makeBy(count, slotAt);
 
 const overlaps = (one: Position, other: Position): boolean =>
-  Math.abs(one.left - other.left) < MACHINE_WIDTH && Math.abs(one.top - other.top) < MACHINE_HEIGHT;
+  Math.abs(one.x - other.x) < MACHINE_WIDTH &&
+  Math.abs(one.y - other.y) < MACHINE_HEIGHT;
 
 const samePosition = (one: Position, other: Position): boolean =>
-  one.left === other.left && one.top === other.top;
+  one.x === other.x && one.y === other.y;
 
 const freeSlotFrom = (index: number, taken: readonly Position[]): Position => {
   const slot = slotAt(index);
-  if (taken.some((position) => overlaps(position, slot))) {
-    return freeSlotFrom(index + NEXT_SLOT, taken);
-  }
-  return slot;
+  return Array.some(taken, (position) => overlaps(position, slot))
+    ? freeSlotFrom(index + 1, taken)
+    : slot;
 };
 
-const placedAll = (layout: Layout, keys: readonly string[]): Layout => {
-  if (keys.every((key) => Object.hasOwn(layout, key))) {
-    return layout;
-  }
-  const placed = new Map(Object.entries(layout));
-  const taken = keys.flatMap((key) => placed.get(key) ?? []);
-  for (const key of keys.filter((candidate) => !placed.has(candidate))) {
-    const slot = freeSlotFrom(FIRST_SLOT, taken);
-    placed.set(key, slot);
-    taken.push(slot);
-  }
-  return Object.fromEntries(placed);
-};
+const positionsOf = (
+  layout: Layout,
+  keys: readonly string[]
+): readonly Position[] =>
+  Array.flatMap(keys, (key) => Option.toArray(Record.get(layout, key)));
 
-const daemonPosition = (machine: Machine): readonly Position[] => {
-  if (!machine.spot.placed) {
-    return [];
-  }
-  return [{ left: machine.spot.left, top: machine.spot.top }];
-};
+interface Placing {
+  readonly keys: readonly string[];
+  readonly layout: Layout;
+}
 
-const daemonLayout = (machines: readonly Machine[]): Layout =>
-  Object.fromEntries(
-    machines.flatMap((machine) =>
-      daemonPosition(machine).map((position): [string, Position] => [machine.key, position]),
-    ),
+interface Showing {
+  readonly held: Layout;
+  readonly machines: readonly Machine[];
+}
+
+interface Lookup {
+  readonly key: string;
+  readonly layout: Layout;
+}
+
+const placedAll = ({ keys, layout }: Placing): Layout =>
+  Array.reduce(
+    Array.filter(keys, (key) => !Record.has(layout, key)),
+    layout,
+    (placed, key) =>
+      Record.set(placed, key, freeSlotFrom(0, positionsOf(placed, keys)))
   );
 
-const shownLayout = (machines: readonly Machine[], held: Layout): Layout => {
-  const keys = machines.map((machine) => machine.key);
-  const present = Object.entries(held).filter(([key]) => keys.includes(key));
-  return placedAll({ ...daemonLayout(machines), ...Object.fromEntries(present) }, keys);
+const daemonLayout = (machines: readonly Machine[]): Layout =>
+  Record.fromEntries(
+    Array.flatMap(machines, ({ key, spot }): [string, Position][] =>
+      spot === null ? [] : [[key, spot]]
+    )
+  );
+
+const keysOf = (machines: readonly Machine[]): readonly string[] =>
+  Array.map(machines, ({ key }) => key);
+
+const shownLayout = ({ held, machines }: Showing): Layout => {
+  const keys = keysOf(machines);
+  const present = Record.filter(held, (_position, key) =>
+    Array.some(keys, (known) => known === key)
+  );
+  return placedAll({
+    keys,
+    layout: { ...daemonLayout(machines), ...present },
+  });
 };
 
 const unplacedKeys = (machines: readonly Machine[]): readonly string[] =>
-  machines.filter((machine) => !machine.spot.placed).map((machine) => machine.key);
+  keysOf(Array.filter(machines, ({ spot }) => spot === null));
 
-const stillHeld = (held: Layout, machines: readonly Machine[]): Layout => {
+const stillHeld = ({ held, machines }: Showing): Layout => {
   const agreed = daemonLayout(machines);
-  const keys = new Set(machines.map((machine) => machine.key));
-  const waiting = Object.entries(held).filter(([key, position]) => {
-    const settled = agreed[key];
-    return keys.has(key) && !(settled && samePosition(settled, position));
-  });
-  if (waiting.length === Object.keys(held).length) {
-    return held;
-  }
-  return Object.fromEntries(waiting);
+  const keys = keysOf(machines);
+  return Record.filter(
+    held,
+    (position, key) =>
+      Array.some(keys, (known) => known === key) &&
+      !Option.exists(Record.get(agreed, key), (settled) =>
+        samePosition(settled, position)
+      )
+  );
 };
 
-const positionOf = (layout: Layout, key: string): Position => layout[key] ?? slotAt(FIRST_SLOT);
-
-const withPosition = (layout: Layout, key: string, position: Position): Layout => ({
-  ...layout,
-  [key]: position,
-});
-
-const withoutPosition = (layout: Layout, key: string): Layout =>
-  Object.fromEntries(Object.entries(layout).filter(([held]) => held !== key));
+const positionOf = ({ key, layout }: Lookup): Position =>
+  Option.getOrElse(Record.get(layout, key), () => slotAt(0));
 
 const markOf = (position: Position): Mark => ({
   height: Math.round(MACHINE_HEIGHT * MAP_SCALE),
-  left: Math.round(MAP_INSET + position.left * MAP_SCALE),
-  top: Math.round(position.top * MAP_SCALE),
+  left: Math.round(MAP_INSET + position.x * MAP_SCALE),
+  top: Math.round(position.y * MAP_SCALE),
   width: Math.round(MACHINE_WIDTH * MAP_SCALE),
 });
 
 const extentOf = (positions: readonly Position[]): Position => ({
-  left:
-    Math.max(FLOOR_EDGE, ...positions.map((position) => position.left)) + MACHINE_WIDTH + ORIGIN,
-  top: Math.max(FLOOR_EDGE, ...positions.map((position) => position.top)) + MACHINE_HEIGHT + ORIGIN,
+  x:
+    Math.max(0, ...Array.map(positions, ({ x }) => x)) + MACHINE_WIDTH + ORIGIN,
+  y:
+    Math.max(0, ...Array.map(positions, ({ y }) => y)) +
+    MACHINE_HEIGHT +
+    ORIGIN,
 });
 
 export {
   EMPTY_LAYOUT,
+  GRID_STEP,
   MACHINE_HEIGHT,
   MACHINE_WIDTH,
+  PITCH_X,
+  PITCH_Y,
   draggedTo,
   extentOf,
   firstSlots,
   markOf,
   movedBy,
+  placedAll,
   positionOf,
   pulledPast,
   shownLayout,
+  slotAt,
+  snapped,
   stepsToPixels,
   stillHeld,
   unplacedKeys,
-  withPosition,
-  withoutPosition,
 };
-export type { Grip, Layout, Machine, Mark, Position };
+export type { Grip, Layout, Machine, Mark, Pull };

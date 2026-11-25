@@ -1,44 +1,70 @@
+import * as stylex from "@stylexjs/stylex";
+import type { ReactElement } from "react";
+
+import { color, font, space } from "#/renderer/keel/keel-tokens.stylex.ts";
 import { THEME_LABELS, otherTheme } from "#/renderer/theme/theme-model.ts";
-import type { FleetReading } from "#/shared/fleet-reading.ts";
-import type { JSX } from "@solidjs/web";
-import { Loading } from "solid-js";
-import { createTheme } from "#/renderer/theme/theme.ts";
+import {
+  useTheme,
+  useThemeSend,
+  useWindow,
+} from "#/renderer/window/window-provider.tsx";
 
-interface AppHeaderProperties {
-  readonly reading: FleetReading;
-}
-
-const AGENT_NOUNS: Readonly<Partial<Record<Intl.LDMLPluralRule, string>>> = { one: "agent" };
 const NOT_APPLICABLE = "—";
 const plurals = new Intl.PluralRules("en");
 
-const countOf = (reading: FleetReading): string => {
-  if (reading.kind !== "agents") {
-    return NOT_APPLICABLE;
-  }
-  const count = reading.agents.length;
-  return `${count} ${AGENT_NOUNS[plurals.select(count)] ?? "agents"}`;
-};
+const styles = stylex.create({
+  header: {
+    alignItems: "center",
+    backgroundColor: color.surface,
+    borderBottomColor: color.hairline,
+    borderBottomStyle: "solid",
+    borderBottomWidth: 1,
+    display: "flex",
+    flexWrap: "wrap",
+    gap: space.s3,
+    paddingBlock: 10,
+    paddingInline: space.s5,
+  },
+  spacer: { flexGrow: 1 },
+  title: {
+    fontFamily: font.sans,
+    fontSize: 16,
+    fontWeight: 600,
+    lineHeight: "22px",
+  },
+});
 
-const AppHeader = (properties: AppHeaderProperties): JSX.Element => {
-  const { theme, toggle } = createTheme();
+const countLabel = (count: number): string =>
+  `${count} ${plurals.select(count) === "one" ? "agent" : "agents"}`;
+
+const AppHeader = (): ReactElement => {
+  const theme = useTheme();
+  const sendTheme = useThemeSend();
+  const count = useWindow((snapshot) => snapshot.context.agents.length);
+  const connecting = useWindow((snapshot) =>
+    snapshot.matches({ fleet: { status: "connecting" } })
+  );
+  const other = otherTheme(theme);
+  const handleToggle = (): void => {
+    sendTheme({ type: "theme.toggled" });
+  };
   return (
-    <header class="wk-header">
-      <span class="wk-title">Wake</span>
-      <Loading>
-        <span class="k-badge k-badge--quiet">{countOf(properties.reading)}</span>
-      </Loading>
-      <span class="wk-spacer" />
+    <header {...stylex.props(styles.header)}>
+      <span {...stylex.props(styles.title)}>Wake</span>
+      <span className="k-badge k-badge--quiet">
+        {connecting ? NOT_APPLICABLE : countLabel(count)}
+      </span>
+      <span {...stylex.props(styles.spacer)} />
       <button
+        aria-label={`Switch to the ${other} theme`}
+        className="k-btn k-btn--secondary k-btn--sm"
+        onClick={handleToggle}
         type="button"
-        class="k-btn k-btn--secondary k-btn--sm"
-        aria-label={`Switch to the ${otherTheme(theme())} theme`}
-        onClick={toggle}
       >
-        {THEME_LABELS[otherTheme(theme())]}
+        {THEME_LABELS[other]}
       </button>
     </header>
   );
 };
 
-export { AppHeader, countOf };
+export { AppHeader };

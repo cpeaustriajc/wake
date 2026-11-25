@@ -1,46 +1,86 @@
-import type { LampTone, Tile } from "#/renderer/floor/tile-model.ts";
-import type { Layout, Mark } from "#/renderer/floor/floor-model.ts";
-import { markOf, positionOf } from "#/renderer/floor/floor-model.ts";
-import { For } from "solid-js";
-import type { JSX } from "@solidjs/web";
+import * as stylex from "@stylexjs/stylex";
+import { Array } from "effect";
+import type { ReactElement } from "react";
 
-interface MinimapProperties {
+import { markOf, positionOf } from "#/renderer/floor/floor-model.ts";
+import type { Layout } from "#/renderer/floor/floor-model.ts";
+import { toneStyles } from "#/renderer/floor/lamp.tsx";
+import type { Tile } from "#/renderer/floor/tile-model.ts";
+import {
+  color,
+  radius,
+  shadow,
+  space,
+} from "#/renderer/keel/keel-tokens.stylex.ts";
+
+interface MinimapProps {
   readonly layout: Layout;
   readonly tiles: readonly Tile[];
 }
 
-interface Spot {
-  readonly key: string;
-  readonly mark: Mark;
-  readonly tone: LampTone;
-}
+const styles = stylex.create({
+  box: (left: number, top: number, width: number, height: number) => ({
+    height,
+    left,
+    top,
+    width,
+  }),
+  map: {
+    backgroundColor: color.surface,
+    borderColor: color.edge,
+    borderRadius: radius.panel,
+    borderStyle: "solid",
+    borderWidth: 1,
+    bottom: space.s3,
+    boxShadow: shadow.pop,
+    paddingBlock: 6,
+    paddingInline: space.s2,
+    pointerEvents: "none",
+    position: "absolute",
+    right: space.s3,
+    zIndex: 3,
+  },
+  mark: {
+    borderColor: color.edgeStrong,
+    borderRadius: radius.key,
+    borderStyle: "solid",
+    borderWidth: 1,
+    boxSizing: "border-box",
+    position: "absolute",
+  },
+  well: {
+    backgroundColor: color.well,
+    borderColor: color.edgeStrong,
+    borderRadius: radius.chip,
+    borderStyle: "solid",
+    borderWidth: 1,
+    boxShadow: shadow.well,
+    height: 136,
+    overflow: "hidden",
+    position: "relative",
+    width: 156,
+  },
+});
 
-const Minimap = (properties: MinimapProperties): JSX.Element => {
-  const spots = (): readonly Spot[] =>
-    properties.tiles.map((tile) => ({
-      key: tile.key,
-      mark: markOf(positionOf(properties.layout, tile.key)),
-      tone: tile.lamp,
-    }));
-  return (
-    <div class="wk-map" aria-hidden="true">
-      <div class="k-well wk-map__well">
-        <For each={spots()} keyed={(spot) => spot.key}>
-          {(spot) => (
-            <span
-              class={["wk-map__mark", `wk-lamp--${spot().tone}`]}
-              style={{
-                height: `${spot().mark.height}px`,
-                left: `${spot().mark.left}px`,
-                top: `${spot().mark.top}px`,
-                width: `${spot().mark.width}px`,
-              }}
-            />
-          )}
-        </For>
-      </div>
+const Minimap = ({ layout, tiles }: MinimapProps): ReactElement => (
+  <div {...stylex.props(styles.map)} aria-hidden="true">
+    <div {...stylex.props(styles.well)}>
+      {Array.map(tiles, ({ key, lamp }) => {
+        const mark = markOf(positionOf({ key, layout }));
+        return (
+          <span
+            {...stylex.props(
+              styles.mark,
+              toneStyles[lamp],
+              styles.box(mark.left, mark.top, mark.width, mark.height)
+            )}
+            data-mark={key}
+            key={key}
+          />
+        );
+      })}
     </div>
-  );
-};
+  </div>
+);
 
 export { Minimap };

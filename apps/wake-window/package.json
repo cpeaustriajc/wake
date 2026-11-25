@@ -28,7 +28,7 @@
     "xstate": "5.33.4"
   },
   "devDependencies": {
-    "@effect/tsgo": "0.67.3",
+    "@effect/tsgo": "0.73.4",
     "@effect/vitest": "4.1.2",
     "@fast-check/vitest": "0.5.0",
     "@stylexjs/eslint-plugin": "0.19.2",
@@ -42,7 +42,7 @@
     "eslint-plugin-no-comments": "1.2.1",
     "fast-check": "4.11.0",
     "oxfmt": "0.80.0",
-    "oxlint": "1.95.0",
+    "oxlint": "1.94.0",
     "oxlint-tsgolint": "7.0.2008",
     "react-doctor": "0.9.23",
     "tsrs": "0.22.0-ts7.1.0-beta",

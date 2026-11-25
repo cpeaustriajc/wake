@@ -1,29 +1,26 @@
+import { Config, Effect } from "effect";
 import { BrowserWindow, app, ipcMain } from "electron";
-import { LIST_AGENTS_CHANNEL, PLACE_ON_FLOOR_CHANNEL } from "#/shared/bridge.ts";
+
 import { listAgents, placeOnFloor } from "#/main/daemon-pipe.ts";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
-import { socketPathOf } from "#/main/socket-path.ts";
+import {
+  LIST_AGENTS_CHANNEL,
+  PLACE_ON_FLOOR_CHANNEL,
+} from "#/shared/bridge.ts";
 
 const MINIMUM_HEIGHT = 480;
 const MINIMUM_WIDTH = 640;
-const PRELOAD_FILE = "../preload/preload.cjs";
-const RENDERER_FILE = "../renderer/index.html";
 const WINDOW_HEIGHT = 900;
 const WINDOW_WIDTH = 1440;
 
-const socketPath = socketPathOf(process.env["WAKE_SOCKET"]);
+const socketPath = Config.String("WAKE_SOCKET").pipe(
+  Config.withDefault(`${app.getPath("home")}/.wake/wake.sock`)
+);
 
-const rendererUrl = (): string => {
-  const served = process.env["ELECTRON_RENDERER_URL"];
-  if (typeof served === "string") {
-    return served;
-  }
-  return pathToFileURL(path.join(import.meta.dirname, RENDERER_FILE)).href;
-};
+const rendererUrl = Config.String("ELECTRON_RENDERER_URL").pipe(
+  Config.withDefault(new URL("../renderer/index.html", import.meta.url).href)
+);
 
-const openWindow = async (): Promise<void> => {
-  const home = rendererUrl();
+const openWindow = (home: string): Promise<void> => {
   const viewer = new BrowserWindow({
     height: WINDOW_HEIGHT,
     minHeight: MINIMUM_HEIGHT,
@@ -32,7 +29,7 @@ const openWindow = async (): Promise<void> => {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
-      preload: path.join(import.meta.dirname, PRELOAD_FILE),
+      preload: `${import.meta.dirname}/../preload/preload.cjs`,
       sandbox: true,
     },
     width: WINDOW_WIDTH,
@@ -43,19 +40,21 @@ const openWindow = async (): Promise<void> => {
       event.preventDefault();
     }
   });
-  await viewer.loadURL(home);
+  return viewer.loadURL(home);
 };
 
-ipcMain.handle(LIST_AGENTS_CHANNEL, async () => {
-  const answer = await listAgents(socketPath);
-  return answer;
-});
-ipcMain.handle(PLACE_ON_FLOOR_CHANNEL, async (_event, wire: unknown) => {
-  const answer = await placeOnFloor(socketPath, wire);
-  return answer;
-});
+ipcMain.handle(LIST_AGENTS_CHANNEL, () =>
+  Effect.runPromise(socketPath.pipe(Effect.flatMap(listAgents)))
+);
+ipcMain.handle(PLACE_ON_FLOOR_CHANNEL, (_event, wire: unknown) =>
+  Effect.runPromise(
+    socketPath.pipe(
+      Effect.flatMap((path) => placeOnFloor({ socketPath: path, wire }))
+    )
+  )
+);
 app.on("window-all-closed", () => {
   app.quit();
 });
 await app.whenReady();
-await openWindow();
+await openWindow(await Effect.runPromise(rendererUrl));

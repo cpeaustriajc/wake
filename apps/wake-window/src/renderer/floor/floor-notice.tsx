@@ -1,123 +1,213 @@
-import { For, Match, Switch } from "solid-js";
-import type { FleetReading } from "#/shared/fleet-reading.ts";
-import type { JSX } from "@solidjs/web";
-import type { PlaceFailure } from "#/renderer/floor/floor-placing.ts";
-import { firstSlots } from "#/renderer/floor/floor-model.ts";
+import * as stylex from "@stylexjs/stylex";
+import { Array } from "effect";
+import type { ReactElement } from "react";
 
-interface FloorNoticeProperties {
-  readonly reading: FleetReading;
-}
+import {
+  MACHINE_HEIGHT,
+  MACHINE_WIDTH,
+  firstSlots,
+} from "#/renderer/floor/floor-model.ts";
+import { color, radius, space } from "#/renderer/keel/keel-tokens.stylex.ts";
+import type {
+  PlaceFailure,
+  Trouble,
+} from "#/renderer/window/window-context-model.ts";
 
-const SKELETON_COUNT = 3;
-const SKELETON_SLOTS = firstSlots(SKELETON_COUNT);
+const SKELETON_SLOTS = firstSlots(3);
 
-const InboxIcon = (): JSX.Element => (
+const shimmer = stylex.keyframes({ "50%": { opacity: 0.55 } });
+
+const styles = stylex.create({
+  alerts: {
+    display: "flex",
+    flexDirection: "column",
+    gap: space.s2,
+    left: space.s3,
+    maxWidth: 560,
+    position: "absolute",
+    right: space.s3,
+    top: space.s3,
+    zIndex: 3,
+  },
+  card: { maxWidth: 460 },
+  notice: {
+    display: "grid",
+    inset: 0,
+    padding: space.s5,
+    placeItems: "center",
+    position: "absolute",
+  },
+  place: (x: number, y: number, width: number, height: number) => ({
+    height,
+    left: x,
+    top: y,
+    width,
+  }),
+  skeleton: {
+    animationDuration: "1.6s",
+    animationIterationCount: "infinite",
+    animationName: {
+      "@media (prefers-reduced-motion: reduce)": "none",
+      default: shimmer,
+    },
+    animationTimingFunction: "ease-in-out",
+    backgroundColor: color.surface,
+    borderColor: color.hairline,
+    borderRadius: radius.panel,
+    borderStyle: "solid",
+    borderWidth: 1,
+    position: "absolute",
+  },
+});
+
+const InboxIcon = (): ReactElement => (
   <svg
-    width="16"
-    height="16"
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    stroke-width="1.5"
-    stroke-linecap="round"
-    stroke-linejoin="round"
     aria-hidden="true"
+    fill="none"
+    height="16"
+    stroke="currentColor"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    strokeWidth="1.5"
+    viewBox="0 0 16 16"
+    width="16"
   >
     <path d="M2.5 9.5l2-5.5h7l2 5.5V12a1 1 0 0 1-1 1h-9a1 1 0 0 1-1-1z" />
     <path d="M2.5 9.5h3.25l.75 1.5h3l.75-1.5h3.25" />
   </svg>
 );
 
-const AlertIcon = (): JSX.Element => (
+const AlertIcon = (): ReactElement => (
   <svg
-    viewBox="0 0 16 16"
+    aria-hidden="true"
     fill="none"
     stroke="currentColor"
-    stroke-width="1.5"
-    stroke-linecap="round"
-    stroke-linejoin="round"
-    aria-hidden="true"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    strokeWidth="1.5"
+    viewBox="0 0 16 16"
   >
     <path d="M8 2.5 14 13H2z" />
     <path d="M8 6.5v3M8 11.25h.01" />
   </svg>
 );
 
-const FloorSkeleton = (): JSX.Element => (
-  <For each={SKELETON_SLOTS}>
-    {(slot) => (
+const FloorSkeleton = (): ReactElement => (
+  <>
+    {Array.map(SKELETON_SLOTS, ({ x, y }) => (
       <span
-        class="k-skeleton wk-tile-skeleton"
-        style={{ left: `${slot.left}px`, top: `${slot.top}px` }}
+        {...stylex.props(
+          styles.skeleton,
+          styles.place(x, y, MACHINE_WIDTH, MACHINE_HEIGHT)
+        )}
         aria-hidden="true"
+        key={`${x}-${y}`}
       />
-    )}
-  </For>
+    ))}
+  </>
 );
 
-const DaemonDown = (properties: { readonly socket: string }): JSX.Element => (
-  <output class="k-alert k-alert--warning wk-notice__card">
+const DaemonDown = ({ socket }: { readonly socket: string }): ReactElement => (
+  <output className="k-alert k-alert--warning">
     <AlertIcon />
-    <span class="k-alert__title">The daemon is not running</span>
-    <span class="k-alert__body">
-      Start it with <code class="k-mono">wake daemon</code>. Agents keep running without this
-      window; it only reads {properties.socket}.
+    <span className="k-alert__title">The daemon is not running</span>
+    <span className="k-alert__body">
+      Start it with <code className="k-mono">wake daemon</code>. Agents keep
+      running without this window; it only reads {socket}.
     </span>
   </output>
 );
 
-const Unreadable = (properties: { readonly reason: string }): JSX.Element => (
-  <div class="k-alert k-alert--danger wk-notice__card" role="alert">
+const Unreadable = ({ reason }: { readonly reason: string }): ReactElement => (
+  <div className="k-alert k-alert--danger" role="alert">
     <AlertIcon />
-    <span class="k-alert__title">The daemon's answer cannot be read</span>
-    <span class="k-alert__body">
-      This window and the daemon disagree on the list of agents: {properties.reason}. Build both
-      from the same commit.
+    <span className="k-alert__title">
+      The daemon&apos;s answer cannot be read
+    </span>
+    <span className="k-alert__body">
+      This window and the daemon disagree on the list of agents: {reason}. Build
+      both from the same commit.
     </span>
   </div>
 );
 
-const NoAgents = (): JSX.Element => (
-  <div class="k-card wk-notice__card">
-    <div class="k-empty">
-      <span class="k-tile k-tile--control">
+const NoAgents = (): ReactElement => (
+  <div className="k-card">
+    <div className="k-empty">
+      <span className="k-tile k-tile--control">
         <InboxIcon />
       </span>
-      <span class="k-empty__title">No agents yet</span>
-      <span class="k-empty__desc">
-        Agents started with <code class="k-mono">wake agent start</code> and cloud tasks followed
-        with <code class="k-mono">wake cloud track</code> land on this floor.
+      <span className="k-empty__title">No agents yet</span>
+      <span className="k-empty__desc">
+        Agents started with <code className="k-mono">wake agent start</code> and
+        cloud tasks followed with{" "}
+        <code className="k-mono">wake cloud track</code> land on this floor.
       </span>
     </div>
   </div>
 );
 
-const FloorNotice = (properties: FloorNoticeProperties): JSX.Element => (
-  <div class="wk-notice">
-    <Switch fallback={<NoAgents />}>
-      <Match when={properties.reading.kind === "daemon_down" && properties.reading}>
-        {(down) => <DaemonDown socket={down().socket} />}
-      </Match>
-      <Match when={properties.reading.kind === "unreadable" && properties.reading}>
-        {(unreadable) => <Unreadable reason={unreadable().reason} />}
-      </Match>
-    </Switch>
+const TroubleAlert = ({
+  trouble,
+}: {
+  readonly trouble: Trouble;
+}): ReactElement | null => {
+  if (trouble.kind === "daemon_down") {
+    return <DaemonDown socket={trouble.socket} />;
+  }
+  return trouble.kind === "unreadable" ? (
+    <Unreadable reason={trouble.reason} />
+  ) : null;
+};
+
+const FloorNotice = ({
+  trouble,
+}: {
+  readonly trouble: Trouble;
+}): ReactElement => (
+  <div {...stylex.props(styles.notice)}>
+    <div {...stylex.props(styles.card)}>
+      {trouble.kind === "none" ? (
+        <NoAgents />
+      ) : (
+        <TroubleAlert trouble={trouble} />
+      )}
+    </div>
   </div>
 );
 
-const PlaceAlert = (properties: { readonly failures: readonly PlaceFailure[] }): JSX.Element => (
-  <For each={properties.failures}>
-    {(failure) => (
-      <output class="k-alert k-alert--warning wk-floor-alert">
-        <AlertIcon />
-        <span class="k-alert__title">{failure.key} could not be placed</span>
-        <span class="k-alert__body">
-          The daemon did not take the new place: {failure.reason}. The machine is back where the
-          daemon keeps it.
-        </span>
-      </output>
-    )}
-  </For>
+const PlaceAlert = ({
+  failure,
+}: {
+  readonly failure: PlaceFailure;
+}): ReactElement => (
+  <output className="k-alert k-alert--warning">
+    <AlertIcon />
+    <span className="k-alert__title">{failure.key} could not be placed</span>
+    <span className="k-alert__body">
+      The daemon did not take the new place: {failure.reason}. The machine is
+      back where the daemon keeps it.
+    </span>
+  </output>
 );
 
-export { FloorNotice, FloorSkeleton, PlaceAlert };
+interface FloorAlertsProps {
+  readonly failures: readonly PlaceFailure[];
+  readonly stale: boolean;
+  readonly trouble: Trouble;
+}
+
+const FloorAlerts = ({
+  failures,
+  stale,
+  trouble,
+}: FloorAlertsProps): ReactElement => (
+  <div {...stylex.props(styles.alerts)}>
+    {stale ? <TroubleAlert trouble={trouble} /> : null}
+    {Array.map(failures, (failure) => (
+      <PlaceAlert failure={failure} key={failure.key} />
+    ))}
+  </div>
+);
+
+export { FloorAlerts, FloorNotice, FloorSkeleton };

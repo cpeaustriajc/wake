@@ -1,13 +1,12 @@
-import { Tabs, TabsList, TabsPanel, TabsTab } from "@ui-sdk/solid/tabs";
-import { For } from "solid-js";
-import type { JSX } from "@solidjs/web";
+import * as stylex from "@stylexjs/stylex";
+import { Tabs, TabsList, TabsPanel, TabsTab } from "@ui-sdk/react/tabs";
+import { Array } from "effect";
+import type { ReactElement } from "react";
+
 import { Lamp } from "#/renderer/floor/lamp.tsx";
 import type { Tile } from "#/renderer/floor/tile-model.ts";
-
-interface WorkspaceViewProperties {
-  readonly onBack: () => void;
-  readonly tile: Tile;
-}
+import { color, font, space } from "#/renderer/keel/keel-tokens.stylex.ts";
+import { useWindowSend } from "#/renderer/window/window-provider.tsx";
 
 interface Pane {
   readonly label: string;
@@ -18,7 +17,8 @@ interface Pane {
 
 const THREAD: Pane = {
   label: "Thread",
-  later: "Messages between you and this agent appear here once the daemon carries them.",
+  later:
+    "Messages between you and this agent appear here once the daemon carries them.",
   missing: "No thread yet",
   value: "thread",
 };
@@ -26,7 +26,8 @@ const THREAD: Pane = {
 const PANES: readonly Pane[] = [
   {
     label: "Diff",
-    later: "Each turn's changes appear here once the daemon reads this agent's branch.",
+    later:
+      "Each turn's changes appear here once the daemon reads this agent's branch.",
     missing: "No diff yet",
     value: "diff",
   },
@@ -38,13 +39,15 @@ const PANES: readonly Pane[] = [
   },
   {
     label: "Terminal",
-    later: "A shell in this agent's folder, kept alive by the daemon, comes next.",
+    later:
+      "A shell in this agent's folder, kept alive by the daemon, comes next.",
     missing: "No terminal yet",
     value: "terminal",
   },
   {
     label: "Browser",
-    later: "A page view for the app this agent builds comes after the terminal.",
+    later:
+      "A page view for the app this agent builds comes after the terminal.",
     missing: "No browser yet",
     value: "browser",
   },
@@ -56,64 +59,127 @@ const PANES: readonly Pane[] = [
   },
 ];
 
-const EmptyPane = (properties: { readonly pane: Pane }): JSX.Element => (
-  <div class="k-empty">
-    <span class="k-empty__title">{properties.pane.missing}</span>
-    <span class="k-empty__desc">{properties.pane.later}</span>
+const styles = stylex.create({
+  body: {
+    alignItems: "flex-start",
+    display: "flex",
+    flexWrap: "wrap",
+    gap: space.s4,
+  },
+  crumbs: {
+    alignItems: "center",
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 6,
+  },
+  here: {
+    fontFamily: font.sans,
+    fontSize: 14,
+    fontWeight: 600,
+    lineHeight: "20px",
+  },
+  mark: { color: color.inkFaint },
+  meta: { color: color.inkMuted, fontSize: 13 },
+  panes: {
+    display: "flex",
+    flexBasis: 420,
+    flexDirection: "column",
+    flexGrow: 999,
+    flexShrink: 1,
+    gap: space.s3,
+    minWidth: 0,
+  },
+  phase: { fontWeight: 500 },
+  status: {
+    alignItems: "center",
+    display: "flex",
+    flexWrap: "wrap",
+    gap: space.s2,
+  },
+  tabs: { maxWidth: 520 },
+  thread: {
+    flexBasis: 300,
+    flexGrow: 1,
+    flexShrink: 1,
+    maxWidth: 400,
+    minWidth: 0,
+  },
+  workspace: {
+    display: "flex",
+    flexDirection: "column",
+    flexGrow: 1,
+    gap: space.s3,
+    minHeight: 0,
+    overflow: "auto",
+  },
+});
+
+const EmptyPane = ({ pane }: { readonly pane: Pane }): ReactElement => (
+  <div className="k-card">
+    <div className="k-empty">
+      <span className="k-empty__title">{pane.missing}</span>
+      <span className="k-empty__desc">{pane.later}</span>
+    </div>
   </div>
 );
 
-const WorkspaceView = (properties: WorkspaceViewProperties): JSX.Element => (
-  <div class="wk-workspace">
-    <nav class="wk-crumbs" aria-label="Where you are">
-      <button
-        type="button"
-        class="k-btn k-btn--link k-btn--sm"
-        onClick={() => {
-          properties.onBack();
-        }}
-      >
-        Floor
-      </button>
-      <span class="wk-crumbs__mark" aria-hidden="true">
-        ›
-      </span>
-      <span class="wk-crumbs__here">
-        {properties.tile.key} · {properties.tile.headline}
-      </span>
-    </nav>
-    <div class="wk-workspace__status">
-      <Lamp tone={properties.tile.lamp} live={properties.tile.live} />
-      <span class="wk-workspace__phase">{properties.tile.status}</span>
-      <span class="wk-workspace__meta">
-        {properties.tile.place} · {properties.tile.folder}
-      </span>
-      <span class="wk-workspace__meta">{properties.tile.when}</span>
+const Panes = (): ReactElement => (
+  <Tabs {...stylex.props(styles.panes)} defaultValue="diff">
+    <div {...stylex.props(styles.tabs)}>
+      <TabsList aria-label="Workspace panes" className="k-tabs">
+        {Array.map(PANES, ({ label, value }) => (
+          <TabsTab className="k-tab" key={value} value={value}>
+            {label}
+          </TabsTab>
+        ))}
+      </TabsList>
     </div>
-    <div class="wk-workspace__body">
-      <section class="k-card wk-thread" aria-label="Thread">
-        <EmptyPane pane={THREAD} />
-      </section>
-      <Tabs class="wk-panes" defaultValue="diff">
-        <TabsList class="k-tabs wk-panes__tabs" aria-label="Workspace panes">
-          <For each={PANES}>
-            {(pane) => (
-              <TabsTab class="k-tab" value={pane.value}>
-                {pane.label}
-              </TabsTab>
-            )}
-          </For>
-        </TabsList>
-        <For each={PANES}>
-          {(pane) => (
-            <TabsPanel class="k-card" value={pane.value}>
-              <EmptyPane pane={pane} />
-            </TabsPanel>
-          )}
-        </For>
-      </Tabs>
-    </div>
-  </div>
+    {Array.map(PANES, (pane) => (
+      <TabsPanel key={pane.value} value={pane.value}>
+        <EmptyPane pane={pane} />
+      </TabsPanel>
+    ))}
+  </Tabs>
 );
+
+const WorkspaceView = ({ tile }: { readonly tile: Tile }): ReactElement => {
+  const send = useWindowSend();
+  const handleBack = (): void => {
+    send({ type: "workspace.close" });
+  };
+  return (
+    <div {...stylex.props(styles.workspace)}>
+      <nav {...stylex.props(styles.crumbs)} aria-label="Where you are">
+        <button
+          className="k-btn k-btn--link k-btn--sm"
+          onClick={handleBack}
+          type="button"
+        >
+          Floor
+        </button>
+        <span {...stylex.props(styles.mark)} aria-hidden="true">
+          ›
+        </span>
+        <span {...stylex.props(styles.here)}>
+          {tile.key} · {tile.headline}
+        </span>
+      </nav>
+      <div {...stylex.props(styles.status)}>
+        <Lamp live={tile.live} tone={tile.lamp} />
+        <span {...stylex.props(styles.phase)}>{tile.status}</span>
+        <span {...stylex.props(styles.meta)}>
+          {tile.place} · {tile.folder}
+        </span>
+        <span {...stylex.props(styles.meta)}>{tile.when}</span>
+      </div>
+      <div {...stylex.props(styles.body)}>
+        <section {...stylex.props(styles.thread)} aria-label="Thread">
+          <EmptyPane pane={THREAD} />
+        </section>
+        <Panes />
+      </div>
+    </div>
+  );
+};
 
 export { WorkspaceView };

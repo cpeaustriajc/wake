@@ -1,18 +1,11 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "lib": [
-      "esnext",
-      "dom",
-      "dom.iterable"
-    ],
+    "lib": ["esnext", "dom", "dom.iterable"],
     "module": "esnext",
     "moduleResolution": "bundler",
     "jsx": "react-jsx",
-    "types": [
-      "node",
-      "vite/client"
-    ],
+    "types": ["node", "vite/client"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "exactOptionalPropertyTypes": true,
@@ -186,7 +179,8 @@
         "ignoreEffectSuggestionsInTscExitCode": false,
         "ignoreEffectWarningsInTscExitCode": false,
         "ignoreEffectErrorsInTscExitCode": false,
-        "missingDiagnosticNextLine": "error"
+        "missingDiagnosticNextLine": "error",
+        "allowedUnstableApis": ["@effect/vitest"]
       }
     ]
   },
@@ -198,7 +192,5 @@
     "oxlint.config.ts",
     "oxfmt.config.ts"
   ],
-  "exclude": [
-    "src/**/*.model.ts"
-  ]
+  "exclude": ["src/**/*.model.ts"]
 }

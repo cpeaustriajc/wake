@@ -1,9 +1,6 @@
-import type { FloorPlacement, PlaceOutcome } from "#/shared/floor-placement.ts";
-import type { FleetReading } from "#/shared/fleet-reading.ts";
-
 interface WakeBridge {
-  readonly placeOnFloor: (placement: FloorPlacement) => Promise<PlaceOutcome>;
-  readonly readFleet: () => Promise<FleetReading>;
+  readonly placeOnFloor: (placement: unknown) => Promise<unknown>;
+  readonly readFleet: () => Promise<unknown>;
 }
 
 const BRIDGE_NAME = "wake";

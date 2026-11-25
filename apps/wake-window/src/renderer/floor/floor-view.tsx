@@ -1,62 +1,90 @@
-import { FloorNotice, PlaceAlert } from "#/renderer/floor/floor-notice.tsx";
-import { extentOf, positionOf } from "#/renderer/floor/floor-model.ts";
-import type { FleetReading } from "#/shared/fleet-reading.ts";
-import { For } from "solid-js";
-import type { JSX } from "@solidjs/web";
+import * as stylex from "@stylexjs/stylex";
+import { Array } from "effect";
+import type { ReactElement } from "react";
+
+import {
+  GRID_STEP,
+  extentOf,
+  positionOf,
+} from "#/renderer/floor/floor-model.ts";
+import {
+  FloorAlerts,
+  FloorNotice,
+  FloorSkeleton,
+} from "#/renderer/floor/floor-notice.tsx";
 import { MachineTile } from "#/renderer/floor/machine-tile.tsx";
 import { Minimap } from "#/renderer/floor/minimap.tsx";
-import type { Placing } from "#/renderer/floor/floor-placing.ts";
-import type { Position } from "#/renderer/floor/floor-model.ts";
-import type { Tile } from "#/renderer/floor/tile-model.ts";
-import { createFloorGrip } from "#/renderer/floor/floor-grip.ts";
+import { color, radius, shadow } from "#/renderer/keel/keel-tokens.stylex.ts";
+import { layoutIn, tilesIn } from "#/renderer/window/window-context-model.ts";
+import {
+  useWindow,
+  useWindowSend,
+} from "#/renderer/window/window-provider.tsx";
 
-interface FloorViewProperties {
-  readonly onOpen: (key: string) => void;
-  readonly placing: Placing;
-  readonly reading: FleetReading;
-  readonly tiles: readonly Tile[];
-}
+const styles = stylex.create({
+  extent: (width: number, height: number) => ({
+    height,
+    left: 0,
+    pointerEvents: "none",
+    position: "absolute",
+    top: 0,
+    width,
+  }),
+  floor: {
+    backgroundAttachment: "local",
+    backgroundColor: color.well,
+    backgroundImage: `linear-gradient(${color.hairline} 1px, transparent 1px), linear-gradient(90deg, ${color.hairline} 1px, transparent 1px)`,
+    borderColor: color.edgeStrong,
+    borderRadius: radius.card,
+    borderStyle: "solid",
+    borderWidth: 1,
+    boxShadow: shadow.well,
+    inset: 0,
+    overflow: "auto",
+    position: "absolute",
+  },
+  frame: { flexGrow: 1, minHeight: 0, position: "relative" },
+  grid: (step: number) => ({ backgroundSize: `${step}px ${step}px` }),
+});
 
-const FloorView = (properties: FloorViewProperties): JSX.Element => {
-  const { drop, failures, layout, move } = properties.placing;
-  const grip = createFloorGrip({
-    layout,
-    onDrop: drop,
-    onMove: move,
-    onOpen: (key) => {
-      properties.onOpen(key);
-    },
-  });
-  const extent = (): Position =>
-    extentOf(properties.tiles.map((tile) => positionOf(layout(), tile.key)));
+const FloorView = (): ReactElement => {
+  const send = useWindowSend();
+  const context = useWindow((snapshot) => snapshot.context);
+  const connecting = useWindow((snapshot) =>
+    snapshot.matches({ fleet: { status: "connecting" } })
+  );
+  const tiles = tilesIn(context);
+  const layout = layoutIn(context);
+  const extent = extentOf(
+    Array.map(tiles, ({ key }) => positionOf({ key, layout }))
+  );
+  const empty = !Array.isReadonlyArrayNonEmpty(tiles);
   return (
-    <div class="wk-floor-frame">
-      <div class="wk-floor">
+    <div {...stylex.props(styles.frame)}>
+      <div {...stylex.props(styles.floor, styles.grid(GRID_STEP))} data-floor>
         <span
-          class="wk-floor__extent"
-          style={{ height: `${extent().top}px`, width: `${extent().left}px` }}
+          {...stylex.props(styles.extent(extent.x, extent.y))}
           aria-hidden="true"
         />
-        <For
-          each={properties.tiles}
-          keyed={(tile) => tile.key}
-          fallback={<FloorNotice reading={properties.reading} />}
-        >
-          {(tile) => (
-            <MachineTile
-              tile={tile()}
-              position={positionOf(layout(), tile().key)}
-              onGrab={grip.grab}
-              onDrag={grip.drag}
-              onRelease={grip.release}
-              onOpen={grip.open}
-              onNudge={grip.nudge}
-            />
-          )}
-        </For>
+        {Array.map(tiles, (tile) => (
+          <MachineTile
+            key={tile.key}
+            onEvent={send}
+            position={positionOf({ key: tile.key, layout })}
+            tile={tile}
+          />
+        ))}
+        {connecting ? <FloorSkeleton /> : null}
+        {empty && !connecting ? (
+          <FloorNotice trouble={context.trouble} />
+        ) : null}
       </div>
-      <PlaceAlert failures={failures()} />
-      <Minimap tiles={properties.tiles} layout={layout()} />
+      <FloorAlerts
+        failures={context.failures}
+        stale={!empty}
+        trouble={context.trouble}
+      />
+      <Minimap layout={layout} tiles={tiles} />
     </div>
   );
 };

@@ -1,59 +1,45 @@
-import { Loading, Show, createMemo, createSignal } from "solid-js";
+import * as stylex from "@stylexjs/stylex";
+import { Array, Option } from "effect";
+import type { ReactElement } from "react";
+
 import { AppHeader } from "#/renderer/app-header.tsx";
-import { FloorSkeleton } from "#/renderer/floor/floor-notice.tsx";
 import { FloorView } from "#/renderer/floor/floor-view.tsx";
-import type { JSX } from "@solidjs/web";
-import type { WakeBridge } from "#/shared/bridge.ts";
+import { space } from "#/renderer/keel/keel-tokens.stylex.ts";
+import { tilesIn } from "#/renderer/window/window-context-model.ts";
+import { useWindow } from "#/renderer/window/window-provider.tsx";
 import { WorkspaceView } from "#/renderer/workspace/workspace-view.tsx";
-import { createFloorState } from "#/renderer/floor/floor-state.ts";
 
-interface AppProperties {
-  readonly bridge: WakeBridge;
-}
+const styles = stylex.create({
+  app: { display: "flex", flexDirection: "column", height: "100vh" },
+  main: {
+    display: "flex",
+    flexDirection: "column",
+    flexGrow: 1,
+    gap: space.s3,
+    minHeight: 0,
+    minWidth: 0,
+    padding: space.s5,
+  },
+});
 
-const NO_KEY = "";
-
-const LoadingFloor = (): JSX.Element => (
-  <div class="wk-floor-frame">
-    <div class="wk-floor">
-      <FloorSkeleton />
-    </div>
-  </div>
-);
-
-const App = (properties: AppProperties): JSX.Element => {
-  const floor = createFloorState(properties.bridge);
-  const [openedKey, setOpenedKey] = createSignal(NO_KEY);
-  const opened = createMemo(() => floor.tiles().find((tile) => tile.key === openedKey()));
-  const open = (key: string): void => {
-    setOpenedKey(key);
-  };
+const App = (): ReactElement => {
+  const context = useWindow((snapshot) => snapshot.context);
+  const inWorkspace = useWindow((snapshot) =>
+    snapshot.matches({ navigation: "workspace" })
+  );
+  const opened = Array.findFirst(
+    tilesIn(context),
+    (tile) => inWorkspace && tile.key === context.openedKey
+  );
   return (
-    <div class="wk-app">
-      <AppHeader reading={floor.reading()} />
-      <main class="wk-main">
-        <Loading fallback={<LoadingFloor />}>
-          <Show
-            when={opened()}
-            fallback={
-              <FloorView
-                tiles={floor.tiles()}
-                placing={floor.placing}
-                reading={floor.reading()}
-                onOpen={open}
-              />
-            }
-          >
-            {(tile) => (
-              <WorkspaceView
-                tile={tile()}
-                onBack={() => {
-                  open(NO_KEY);
-                }}
-              />
-            )}
-          </Show>
-        </Loading>
+    <div {...stylex.props(styles.app)}>
+      <AppHeader />
+      <main {...stylex.props(styles.main)}>
+        {Option.isSome(opened) ? (
+          <WorkspaceView tile={opened.value} />
+        ) : (
+          <FloorView />
+        )}
       </main>
     </div>
   );

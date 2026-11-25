@@ -1,150 +1,56 @@
-import { failure, success } from "#/shared/outcome.ts";
-import { isRecord, textOf } from "#/shared/json.ts";
-import type { JsonRecord } from "#/shared/json.ts";
-import type { Outcome } from "#/shared/outcome.ts";
+import { Schema } from "effect";
 
-type AgentProgress =
-  | {
-      readonly state: "found";
-      readonly headline: string;
-      readonly phase: string;
-      readonly updated: string;
-    }
-  | { readonly state: "invalid" | "unreachable"; readonly reason: string }
-  | { readonly state: "branch_missing" | "missing" | "pending" }
-  | { readonly state: "unrecognized"; readonly name: string };
+const Location = Schema.Literals(["cloud", "local"]);
 
-type AgentPlace =
-  | { readonly location: "cloud"; readonly branch: string }
-  | { readonly location: "local" };
+const FloorPosition = Schema.Struct({ x: Schema.Int, y: Schema.Int });
 
-type FloorSpot =
-  | { readonly placed: false }
-  | { readonly placed: true; readonly left: number; readonly top: number };
+const AgentProgress = Schema.Union([
+  Schema.Struct({
+    headline: Schema.String,
+    phase: Schema.String,
+    state: Schema.Literal("found"),
+    updated: Schema.String,
+  }),
+  Schema.Struct({
+    reason: Schema.String,
+    state: Schema.Literals(["invalid", "unreachable"]),
+  }),
+  Schema.Struct({
+    state: Schema.Literals(["branch_missing", "missing", "pending"]),
+  }),
+]);
 
-interface AgentEntry {
-  readonly id: number;
-  readonly folder: string;
-  readonly place: AgentPlace;
-  readonly startedAt: number;
-  readonly progress: AgentProgress;
-  readonly spot: FloorSpot;
-}
+const AgentEntry = Schema.Struct({
+  branch: Schema.NullOr(Schema.String),
+  folder: Schema.String,
+  id: Schema.Int,
+  location: Location,
+  position: FloorPosition.pipe(Schema.NullOr, Schema.optionalKey),
+  progress: AgentProgress,
+  started_at: Schema.Int,
+});
 
-const NO_REASON = "no reason given";
+const AgentList = Schema.Struct({ agents: Schema.Array(AgentEntry) });
 
-const decodeFound = (progress: JsonRecord): Outcome<AgentProgress> => {
-  const { headline, phase, updated } = progress;
-  if (typeof headline !== "string" || typeof phase !== "string" || typeof updated !== "string") {
-    return failure("a found progress file lacks headline, phase or updated");
-  }
-  return success({ headline, phase, state: "found", updated });
+const FloorPlacement = Schema.Struct({
+  id: Schema.Int,
+  location: Location,
+  x: Schema.Int,
+  y: Schema.Int,
+});
+
+type Agent = typeof AgentEntry.Type;
+type Placement = typeof FloorPlacement.Type;
+type Position = typeof FloorPosition.Type;
+type Progress = typeof AgentProgress.Type;
+type Whereabouts = typeof Location.Type;
+
+export {
+  AgentEntry,
+  AgentList,
+  AgentProgress,
+  FloorPlacement,
+  FloorPosition,
+  Location,
 };
-
-const decodeProgress = (progress: unknown): Outcome<AgentProgress> => {
-  if (!isRecord(progress) || typeof progress["state"] !== "string") {
-    return failure("an agent's progress has no state");
-  }
-  const { state } = progress;
-  switch (state) {
-    case "found": {
-      return decodeFound(progress);
-    }
-    case "invalid":
-    case "unreachable": {
-      return success({ reason: textOf(progress["reason"], NO_REASON), state });
-    }
-    case "branch_missing":
-    case "missing":
-    case "pending": {
-      return success({ state });
-    }
-    default: {
-      return success({ name: state, state: "unrecognized" });
-    }
-  }
-};
-
-const decodePlace = (entry: JsonRecord): Outcome<AgentPlace> => {
-  const { branch, location } = entry;
-  if (location === "local") {
-    return success({ location });
-  }
-  if (location === "cloud" && typeof branch === "string") {
-    return success({ branch, location });
-  }
-  return failure("an agent is neither local nor a cloud task with a branch");
-};
-
-const decodeSpot = (position: unknown): Outcome<FloorSpot> => {
-  if (position === null || typeof position === "undefined") {
-    return success({ placed: false });
-  }
-  if (!isRecord(position)) {
-    return failure("an agent's position is not an object");
-  }
-  const { x: left, y: top } = position;
-  if (typeof left !== "number" || typeof top !== "number") {
-    return failure("an agent's position lacks x or y");
-  }
-  return success({ left, placed: true, top });
-};
-
-const decodeWhereabouts = (entry: JsonRecord): Outcome<Pick<AgentEntry, "place" | "spot">> => {
-  const place = decodePlace(entry);
-  if (!place.ok) {
-    return place;
-  }
-  const spot = decodeSpot(entry["position"]);
-  if (!spot.ok) {
-    return spot;
-  }
-  return success({ place: place.value, spot: spot.value });
-};
-
-const decodeSituation = (
-  entry: JsonRecord,
-): Outcome<Pick<AgentEntry, "place" | "progress" | "spot">> => {
-  const whereabouts = decodeWhereabouts(entry);
-  if (!whereabouts.ok) {
-    return whereabouts;
-  }
-  const progress = decodeProgress(entry["progress"]);
-  if (!progress.ok) {
-    return progress;
-  }
-  return success({ ...whereabouts.value, progress: progress.value });
-};
-
-const decodeAgent = (entry: unknown): Outcome<AgentEntry> => {
-  if (!isRecord(entry)) {
-    return failure("an agent is not an object");
-  }
-  const { folder, id, started_at: startedAt } = entry;
-  if (typeof folder !== "string" || typeof id !== "number" || typeof startedAt !== "number") {
-    return failure("an agent lacks folder, id or started_at");
-  }
-  const situation = decodeSituation(entry);
-  if (!situation.ok) {
-    return situation;
-  }
-  return success({ folder, id, startedAt, ...situation.value });
-};
-
-const decodeAgents = (result: unknown): Outcome<readonly AgentEntry[]> => {
-  if (!isRecord(result) || !Array.isArray(result["agents"])) {
-    return failure("the answer has no list of agents");
-  }
-  const agents: AgentEntry[] = [];
-  for (const entry of result["agents"]) {
-    const agent = decodeAgent(entry);
-    if (!agent.ok) {
-      return agent;
-    }
-    agents.push(agent.value);
-  }
-  return success(agents);
-};
-
-export { decodeAgents };
-export type { AgentEntry, AgentPlace, AgentProgress, FloorSpot };
+export type { Agent, Placement, Position, Progress, Whereabouts };

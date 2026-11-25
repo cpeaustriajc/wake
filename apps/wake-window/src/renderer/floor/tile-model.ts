@@ -1,21 +1,8 @@
-import type { AgentEntry, AgentProgress, FloorSpot } from "#/shared/agent.ts";
+import { Array, DateTime, Option, Record, String, pipe } from "effect";
+
+import type { Agent, Position, Progress, Whereabouts } from "#/shared/agent.ts";
 
 type LampTone = "action" | "danger" | "idle" | "success" | "warning";
-
-interface Tile {
-  readonly folder: string;
-  readonly headline: string;
-  readonly id: number;
-  readonly key: string;
-  readonly lamp: LampTone;
-  readonly live: boolean;
-  readonly location: "cloud" | "local";
-  readonly note: string;
-  readonly place: string;
-  readonly spot: FloorSpot;
-  readonly status: string;
-  readonly when: string;
-}
 
 interface Signal {
   readonly headline: string;
@@ -24,12 +11,22 @@ interface Signal {
   readonly status: string;
 }
 
-const FIRST_MINUTE = 1;
+interface Tile extends Signal {
+  readonly folder: string;
+  readonly id: number;
+  readonly key: string;
+  readonly location: Whereabouts;
+  readonly note: string;
+  readonly place: string;
+  readonly spot: Position | null;
+  readonly when: string;
+}
+
 const HOURS_PER_DAY = 24;
 const MILLISECONDS_PER_MINUTE = 60_000;
 const MINUTES_PER_HOUR = 60;
 
-const PHASE_LAMPS: Readonly<Record<string, LampTone>> = {
+const PHASE_LAMPS: Record.ReadonlyRecord<string, LampTone> = {
   done: "action",
   planning: "success",
   review: "warning",
@@ -42,34 +39,52 @@ const QUIET_SIGNALS = {
   pending: { headline: "Not read yet", status: "Reading" },
 } as const;
 
-const longAgo = (minutes: number): string => {
-  const hours = Math.floor(minutes / MINUTES_PER_HOUR);
-  if (hours < HOURS_PER_DAY) {
-    return `${hours} h ago`;
-  }
-  return `${Math.floor(hours / HOURS_PER_DAY)} d ago`;
-};
-
-const whenOf = (updated: string, now: number): string => {
-  const minutes = Math.floor((now - Date.parse(updated)) / MILLISECONDS_PER_MINUTE);
-  if (Number.isNaN(minutes)) {
-    return "";
-  }
-  if (minutes < FIRST_MINUTE) {
+const gapLabel = (minutes: number): string => {
+  if (minutes < 1) {
     return "just now";
   }
   if (minutes < MINUTES_PER_HOUR) {
     return `${minutes} min ago`;
   }
-  return longAgo(minutes);
+  const hours = Math.floor(minutes / MINUTES_PER_HOUR);
+  return hours < HOURS_PER_DAY
+    ? `${hours} h ago`
+    : `${Math.floor(hours / HOURS_PER_DAY)} d ago`;
 };
+
+interface Since {
+  readonly now: number;
+  readonly updated: string;
+}
+
+interface Fleet {
+  readonly agents: readonly Agent[];
+  readonly now: number;
+}
+
+const whenOf = ({ now, updated }: Since): string =>
+  Option.match(DateTime.make(updated), {
+    onNone: () => "",
+    onSome: (at) =>
+      gapLabel(
+        Math.floor((now - DateTime.toEpochMillis(at)) / MILLISECONDS_PER_MINUTE)
+      ),
+  });
 
 const foundSignal = (headline: string, phase: string): Signal => {
-  const word = phase.trim().toLowerCase();
-  return { headline, lamp: PHASE_LAMPS[word] ?? "idle", live: word === "working", status: phase };
+  const word = pipe(phase, String.trim, String.toLowerCase);
+  return {
+    headline,
+    lamp: Option.getOrElse(
+      Record.get(PHASE_LAMPS, word),
+      (): LampTone => "idle"
+    ),
+    live: word === "working",
+    status: phase,
+  };
 };
 
-const signalOf = (progress: AgentProgress): Signal => {
+const signalOf = (progress: Progress): Signal => {
   if (progress.state === "found") {
     return foundSignal(progress.headline, progress.phase);
   }
@@ -89,45 +104,37 @@ const signalOf = (progress: AgentProgress): Signal => {
       status: "Unreachable",
     };
   }
-  if (progress.state === "unrecognized") {
-    return { headline: "Unknown progress state", lamp: "idle", live: false, status: progress.name };
-  }
   return { ...QUIET_SIGNALS[progress.state], lamp: "idle", live: false };
 };
 
-const noteOf = (agent: AgentEntry): string => {
-  if (agent.progress.state === "invalid" || agent.progress.state === "unreachable") {
-    return agent.progress.reason;
-  }
-  return agent.folder;
-};
+const noteOf = ({ folder, progress }: Agent): string =>
+  progress.state === "invalid" || progress.state === "unreachable"
+    ? progress.reason
+    : folder;
 
-const updatedOf = (progress: AgentProgress, now: number): string => {
-  if (progress.state === "found") {
-    return whenOf(progress.updated, now);
-  }
-  return "";
-};
+const keyOf = ({ id, location }: Pick<Agent, "id" | "location">): string =>
+  location === "cloud" ? `c${id}` : `a${id}`;
 
-const tileOf = (agent: AgentEntry, now: number): Tile => {
-  const { folder, id, place, spot } = agent;
-  const shared = {
-    ...signalOf(agent.progress),
-    folder,
-    id,
-    location: place.location,
-    note: noteOf(agent),
-    spot,
-    when: updatedOf(agent.progress, now),
-  };
-  if (place.location === "cloud") {
-    return { ...shared, key: `c${id}`, place: `Cloud, branch ${place.branch}` };
-  }
-  return { ...shared, key: `a${id}`, place: "Local" };
-};
+const placeOf = ({ branch, location }: Agent): string =>
+  location === "cloud" ? `Cloud, branch ${branch ?? "unknown"}` : "Local";
 
-const tilesOf = (agents: readonly AgentEntry[], now: number): readonly Tile[] =>
-  agents.map((agent) => tileOf(agent, now));
+const tileOf = (agent: Agent, now: number): Tile => ({
+  ...signalOf(agent.progress),
+  folder: agent.folder,
+  id: agent.id,
+  key: keyOf(agent),
+  location: agent.location,
+  note: noteOf(agent),
+  place: placeOf(agent),
+  spot: agent.position ?? null,
+  when:
+    agent.progress.state === "found"
+      ? whenOf({ now, updated: agent.progress.updated })
+      : "",
+});
 
-export { tileOf, tilesOf, whenOf };
+const tilesOf = ({ agents, now }: Fleet): readonly Tile[] =>
+  Array.map(agents, (agent) => tileOf(agent, now));
+
+export { gapLabel, keyOf, tilesOf, whenOf };
 export type { LampTone, Tile };
