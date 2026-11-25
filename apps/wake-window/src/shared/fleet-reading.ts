@@ -1,5 +1,6 @@
-import { type AgentEntry, decodeAgents } from "#/shared/agent.ts";
+import type { AgentEntry } from "#/shared/agent.ts";
 import type { DaemonAnswer } from "#/shared/daemon-answer.ts";
+import { decodeAgents } from "#/shared/agent.ts";
 
 type FleetReading =
   | { readonly kind: "agents"; readonly agents: readonly AgentEntry[] }

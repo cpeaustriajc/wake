@@ -1,5 +1,7 @@
-import { type JsonRecord, isRecord, textOf } from "#/shared/json.ts";
-import { type Outcome, failure, success } from "#/shared/outcome.ts";
+import { failure, success } from "#/shared/outcome.ts";
+import { isRecord, textOf } from "#/shared/json.ts";
+import type { JsonRecord } from "#/shared/json.ts";
+import type { Outcome } from "#/shared/outcome.ts";
 
 type AgentProgress =
   | {
@@ -69,14 +71,7 @@ const decodePlace = (entry: JsonRecord): Outcome<AgentPlace> => {
   return failure("an agent is neither local nor a cloud task with a branch");
 };
 
-const decodeAgent = (entry: unknown): Outcome<AgentEntry> => {
-  if (!isRecord(entry)) {
-    return failure("an agent is not an object");
-  }
-  const { folder, id, started_at: startedAt } = entry;
-  if (typeof folder !== "string" || typeof id !== "number" || typeof startedAt !== "number") {
-    return failure("an agent lacks folder, id or started_at");
-  }
+const decodeSituation = (entry: JsonRecord): Outcome<Pick<AgentEntry, "place" | "progress">> => {
   const place = decodePlace(entry);
   if (!place.ok) {
     return place;
@@ -85,7 +80,22 @@ const decodeAgent = (entry: unknown): Outcome<AgentEntry> => {
   if (!progress.ok) {
     return progress;
   }
-  return success({ folder, id, place: place.value, progress: progress.value, startedAt });
+  return success({ place: place.value, progress: progress.value });
+};
+
+const decodeAgent = (entry: unknown): Outcome<AgentEntry> => {
+  if (!isRecord(entry)) {
+    return failure("an agent is not an object");
+  }
+  const { folder, id, started_at: startedAt } = entry;
+  if (typeof folder !== "string" || typeof id !== "number" || typeof startedAt !== "number") {
+    return failure("an agent lacks folder, id or started_at");
+  }
+  const situation = decodeSituation(entry);
+  if (!situation.ok) {
+    return situation;
+  }
+  return success({ folder, id, startedAt, ...situation.value });
 };
 
 const decodeAgents = (result: unknown): Outcome<readonly AgentEntry[]> => {
