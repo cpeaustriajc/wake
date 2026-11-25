@@ -27,6 +27,10 @@ const HARDER_FLAG: &str = "--harder";
 const TRIAL_FLAG: &str = "--trial";
 const COMPARE_COMMAND: &str = "compare";
 const USAGE: &str = "usage: wake-resume-test <results folder> <wake binary> [--harder] [--trial] [--no-hook]\n       wake-resume-test compare <results folder>";
+const ISOLATION_ARGUMENTS: [&str; 2] = [
+    "--disallowedTools",
+    "Bash(git push*),Bash(git -C*),Bash(git --git-dir*),Bash(git --work-tree*),Bash(git remote*)",
+];
 const PERMISSION_ARGUMENTS: [&str; 4] = [
     "--permission-mode",
     "acceptEdits",
@@ -344,9 +348,18 @@ fn main() -> ExitCode {
         let _ = writeln!(io::stderr().lock(), "{USAGE}");
         return ExitCode::FAILURE;
     }
+    let isolation: &[&str] = if has(HARDER_FLAG) {
+        &ISOLATION_ARGUMENTS
+    } else {
+        &[]
+    };
     let launch = Launch {
         reload_hook: !has(NO_HOOK_FLAG),
-        extra_arguments: PERMISSION_ARGUMENTS.iter().map(OsString::from).collect(),
+        extra_arguments: PERMISSION_ARGUMENTS
+            .iter()
+            .chain(isolation)
+            .map(OsString::from)
+            .collect(),
     };
     let outcome = Path::new(wake)
         .canonicalize()
