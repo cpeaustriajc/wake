@@ -6,7 +6,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use rusqlite::{Connection, params};
 
 use crate::error::Error;
-use crate::protocol::{CompactionReport, Location, ProgressState};
+use crate::protocol::{CompactionReport, FloorPosition, Location, ProgressState};
 
 const SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS compactions (
@@ -29,6 +29,13 @@ CREATE TABLE IF NOT EXISTS cloud_tasks (
     branch TEXT NOT NULL,
     tracked_at INTEGER NOT NULL,
     UNIQUE (folder, branch)
+);
+CREATE TABLE IF NOT EXISTS floor_positions (
+    location TEXT NOT NULL,
+    agent_id INTEGER NOT NULL,
+    x INTEGER NOT NULL,
+    y INTEGER NOT NULL,
+    PRIMARY KEY (location, agent_id)
 );";
 
 /// A compaction as stored.
@@ -53,6 +60,8 @@ pub struct StoredAgent {
     pub location: Location,
     /// When the daemon last registered the agent, in Unix seconds.
     pub started_at: i64,
+    /// Where the agent's tile sits on the floor; `None` until it is placed.
+    pub position: Option<FloorPosition>,
 }
 
 /// A tracked cloud task as stored.
@@ -66,6 +75,12 @@ pub struct StoredCloudTask {
     pub branch: String,
     /// When the daemon first tracked the task, in Unix seconds.
     pub tracked_at: i64,
+    /// Where the task's tile sits on the floor; `None` until it is placed.
+    pub position: Option<FloorPosition>,
+}
+
+fn position(x: Option<i64>, y: Option<i64>) -> Option<FloorPosition> {
+    x.zip(y).map(|(x, y)| FloorPosition { x, y })
 }
 
 fn now() -> i64 {
@@ -83,7 +98,8 @@ pub struct Store {
 
 impl Store {
     /// Opens the database at `path`, creating the file and its tables if they
-    /// are missing.
+    /// are missing. A database made before the floor existed gains the table
+    /// of floor positions and keeps every row it had.
     ///
     /// # Errors
     ///
@@ -175,9 +191,15 @@ impl Store {
     ///
     /// Returns [`Error::Sqlite`] if the query fails.
     pub fn agents(&self) -> Result<Vec<StoredAgent>, Error> {
-        let mut statement = self
-            .connection
-            .prepare("SELECT id, folder, location, started_at FROM agents ORDER BY id")?;
+        let mut statement = self.connection.prepare(
+            "SELECT agents.id, agents.folder, agents.location, agents.started_at,
+                    floor_positions.x, floor_positions.y
+             FROM agents
+             LEFT JOIN floor_positions
+                 ON floor_positions.location = agents.location
+                 AND floor_positions.agent_id = agents.id
+             ORDER BY agents.id",
+        )?;
         let rows = statement.query_map([], |row| {
             let word: String = row.get(2)?;
             let location = Location::from_word(&word).ok_or_else(|| {
@@ -192,6 +214,7 @@ impl Store {
                 folder: row.get(1)?,
                 location,
                 started_at: row.get(3)?,
+                position: position(row.get(4)?, row.get(5)?),
             })
         })?;
         Ok(rows.collect::<Result<Vec<_>, _>>()?)
@@ -222,17 +245,55 @@ impl Store {
     ///
     /// Returns [`Error::Sqlite`] if the query fails.
     pub fn cloud_tasks(&self) -> Result<Vec<StoredCloudTask>, Error> {
-        let mut statement = self
-            .connection
-            .prepare("SELECT id, folder, branch, tracked_at FROM cloud_tasks ORDER BY id")?;
-        let rows = statement.query_map([], |row| {
+        let mut statement = self.connection.prepare(
+            "SELECT cloud_tasks.id, cloud_tasks.folder, cloud_tasks.branch,
+                    cloud_tasks.tracked_at, floor_positions.x, floor_positions.y
+             FROM cloud_tasks
+             LEFT JOIN floor_positions
+                 ON floor_positions.location = ?1
+                 AND floor_positions.agent_id = cloud_tasks.id
+             ORDER BY cloud_tasks.id",
+        )?;
+        let rows = statement.query_map(params![Location::Cloud.as_str()], |row| {
             Ok(StoredCloudTask {
                 id: row.get(0)?,
                 folder: row.get(1)?,
                 branch: row.get(2)?,
                 tracked_at: row.get(3)?,
+                position: position(row.get(4)?, row.get(5)?),
             })
         })?;
         Ok(rows.collect::<Result<Vec<_>, _>>()?)
+    }
+
+    /// Stores where the tile of the agent with this `location` and `id` sits
+    /// on the floor, replacing any earlier position. Returns `false`, and
+    /// stores nothing, when no such agent exists.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Sqlite`] if the lookup or the write fails.
+    pub fn place_on_floor(
+        &self,
+        location: Location,
+        id: i64,
+        position: FloorPosition,
+    ) -> Result<bool, Error> {
+        let lookup = match location {
+            Location::Local => "SELECT EXISTS (SELECT 1 FROM agents WHERE id = ?1)",
+            Location::Cloud => "SELECT EXISTS (SELECT 1 FROM cloud_tasks WHERE id = ?1)",
+        };
+        let known: bool = self
+            .connection
+            .query_row(lookup, params![id], |row| row.get(0))?;
+        if !known {
+            return Ok(false);
+        }
+        self.connection.execute(
+            "INSERT INTO floor_positions (location, agent_id, x, y) VALUES (?1, ?2, ?3, ?4)
+             ON CONFLICT(location, agent_id) DO UPDATE SET x = excluded.x, y = excluded.y",
+            params![location.as_str(), id, position.x, position.y],
+        )?;
+        Ok(true)
     }
 }

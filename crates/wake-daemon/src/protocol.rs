@@ -13,6 +13,8 @@ pub const REGISTER_AGENT: &str = "agent.register";
 pub const LIST_AGENTS: &str = "agent.list";
 /// The method that tells the daemon to follow a cloud task's branch.
 pub const TRACK_CLOUD_TASK: &str = "cloud.track";
+/// The method that puts an agent's tile at a place on the floor.
+pub const PLACE_ON_FLOOR: &str = "floor.place";
 
 /// The request was not valid JSON.
 pub const PARSE_ERROR: i64 = -32700;
@@ -123,6 +125,32 @@ pub struct CloudTracking {
     pub branch: String,
 }
 
+/// Where an agent's tile sits on the floor, in floor pixels from the top-left
+/// corner. The daemon keeps the numbers as given: tile size, grid step and
+/// slot layout belong to the window that draws the floor.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FloorPosition {
+    /// Pixels from the floor's left edge, never negative.
+    pub x: i64,
+    /// Pixels from the floor's top edge, never negative.
+    pub y: i64,
+}
+
+/// The parameters of [`PLACE_ON_FLOOR`]. Placing an agent that already has a
+/// position moves it. A negative `x` or `y`, or a `location` and `id` that no
+/// agent has, is refused with [`INVALID_PARAMS`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct FloorPlacement {
+    /// Where the agent runs. An ID names an agent only together with this.
+    pub location: Location,
+    /// The agent's ID, as [`LIST_AGENTS`] reports it.
+    pub id: i64,
+    /// Pixels from the floor's left edge.
+    pub x: i64,
+    /// Pixels from the floor's top edge.
+    pub y: i64,
+}
+
 /// What the daemon read from an agent's progress file when it built the list.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "state", rename_all = "snake_case")]
@@ -179,6 +207,11 @@ pub struct AgentEntry {
     /// time of the call for a local agent, within one polling interval for a
     /// cloud task.
     pub progress: AgentProgress,
+    /// Where the agent's tile sits on the floor; `None` until someone places
+    /// it with [`PLACE_ON_FLOOR`]. Restarting the daemon, registering the
+    /// folder again or tracking the branch again keeps it.
+    #[serde(default)]
+    pub position: Option<FloorPosition>,
 }
 
 /// The result of [`LIST_AGENTS`]: local agents oldest first, then cloud tasks

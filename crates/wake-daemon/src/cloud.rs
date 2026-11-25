@@ -70,6 +70,7 @@ impl CloudReader {
             branch: Some(task.branch),
             started_at: task.tracked_at,
             progress,
+            position: task.position,
         }
     }
 }

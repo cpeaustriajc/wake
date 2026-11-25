@@ -17,9 +17,10 @@ use crate::agents::entry;
 use crate::cloud::CloudReader;
 use crate::error::Error;
 use crate::protocol::{
-    AgentEntry, AgentList, AgentRegistration, CloudTracking, CompactionReport, INTERNAL_ERROR,
-    INVALID_PARAMS, LIST_AGENTS, Location, METHOD_NOT_FOUND, PARSE_ERROR, RECORD_COMPACTION,
-    REGISTER_AGENT, Request, Response, TRACK_CLOUD_TASK, VERSION,
+    AgentEntry, AgentList, AgentRegistration, CloudTracking, CompactionReport, FloorPlacement,
+    FloorPosition, INTERNAL_ERROR, INVALID_PARAMS, LIST_AGENTS, Location, METHOD_NOT_FOUND,
+    PARSE_ERROR, PLACE_ON_FLOOR, RECORD_COMPACTION, REGISTER_AGENT, Request, Response,
+    TRACK_CLOUD_TASK, VERSION,
 };
 use crate::store::Store;
 
@@ -170,7 +171,35 @@ fn answer(line: &str, shared: &Shared) -> Response {
                 }),
             )
         }
+        PLACE_ON_FLOOR => with_params(id, request.params, |placement: FloorPlacement| {
+            place(id, placement, shared)
+        }),
         method => Response::failure(id, METHOD_NOT_FOUND, format!("unknown method `{method}`")),
+    }
+}
+
+fn place(id: u64, placement: FloorPlacement, shared: &Shared) -> Response {
+    let FloorPlacement {
+        location,
+        id: agent,
+        x,
+        y,
+    } = placement;
+    if x < 0 || y < 0 {
+        return Response::failure(
+            id,
+            INVALID_PARAMS,
+            format!("a floor position cannot be negative, and ({x}, {y}) is"),
+        );
+    }
+    match lock(&shared.store).place_on_floor(location, agent, FloorPosition { x, y }) {
+        Ok(true) => Response::success(id, json!({ "id": agent })),
+        Ok(false) => Response::failure(
+            id,
+            INVALID_PARAMS,
+            format!("there is no {} agent with ID {agent}", location.as_str()),
+        ),
+        Err(error) => Response::failure(id, INTERNAL_ERROR, error.to_string()),
     }
 }
 
@@ -278,4 +307,17 @@ pub fn track_cloud_task(socket: &Path, folder: &str, branch: &str) -> Result<i64
         branch: branch.to_owned(),
     };
     row_id(&call(socket, TRACK_CLOUD_TASK, &json!(tracking))?)
+}
+
+/// Tells the daemon at `socket` where an agent's tile sits on the floor and
+/// returns the agent's ID. The next [`list_agents`] reports the position, and
+/// it survives a daemon restart.
+///
+/// # Errors
+///
+/// Returns [`Error::Io`] if the daemon cannot be reached, [`Error::Rpc`] if it
+/// answers with an error, such as for a negative coordinate or an agent it
+/// does not know, and [`Error::NoResponse`] if it hangs up.
+pub fn place_on_floor(socket: &Path, placement: &FloorPlacement) -> Result<i64, Error> {
+    row_id(&call(socket, PLACE_ON_FLOOR, &json!(placement))?)
 }
