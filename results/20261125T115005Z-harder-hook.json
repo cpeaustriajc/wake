@@ -1,0 +1,262 @@
+{
+  "run_id": "20261125T115005Z-harder-hook",
+  "task": "harder",
+  "trial": false,
+  "reload_hook": true,
+  "started_at": "2026-11-25T11:50:05.305996Z",
+  "finished_at": "2026-11-25T11:52:38.194642Z",
+  "claude_version": "2.1.331",
+  "model": "claude-opus-5-5",
+  "permission_mode": "acceptEdits",
+  "compaction": {
+    "happened": true,
+    "count": 1,
+    "trigger": "manual",
+    "pre_tokens": 48543,
+    "post_tokens": 13522
+  },
+  "autocompact": null,
+  "hook": {
+    "attached": true,
+    "ran": true,
+    "printed_progress_file": true,
+    "in_stream": [
+      {
+        "name": "SessionStart:startup",
+        "outcome": "success",
+        "exit_code": 0,
+        "printed_progress_file": false
+      },
+      {
+        "name": "SessionStart:startup",
+        "outcome": "success",
+        "exit_code": 0,
+        "printed_progress_file": false
+      },
+      {
+        "name": "SessionStart:compact",
+        "outcome": "success",
+        "exit_code": 0,
+        "printed_progress_file": true
+      },
+      {
+        "name": "SessionStart:compact",
+        "outcome": "success",
+        "exit_code": 0,
+        "printed_progress_file": false
+      },
+      {
+        "name": "SessionStart:compact",
+        "outcome": "success",
+        "exit_code": 0,
+        "printed_progress_file": false
+      }
+    ],
+    "daemon_rows": [
+      {
+        "source": "compact",
+        "progress": "found"
+      }
+    ]
+  },
+  "snapshot_before_compaction": {
+    "progress": "---\nphase: waiting\nheadline: Steps 1-4 done; waiting for the user before step 5\nupdated: 2026-11-25T11:55:00Z\n---\n\n# Progress\n\n## Decisions\n\ndecision codename: quillwort\ndecision port: 27413\ndecision colour: 3a7c1e\ndecision motto: lantern gravel oboe\n\n## Steps\n\n- [x] step 1\n- [x] step 2\n- [x] step 3\n- [x] step 4\n- [ ] step 5\n- [ ] step 6\n- [ ] step 7\n- [ ] step 8\n\n## Notes\n\n- Each step: write steps/N.txt, append `step N done` to LEDGER.md, commit both plus this file as \"step N\". One commit per step; never redo or amend.\n- Steps 1-4 hold only `step N`. Steps 5-8 hold `step N` plus codename=, port=, colour=, motto= (one each, in that order).\n- Decisions live only in this file.\n- The user asked to stop after step 4 and wait for their next message.\n",
+    "decisions": {
+      "Ok": {
+        "codename": "quillwort",
+        "colour": "3a7c1e",
+        "motto": "lantern gravel oboe",
+        "port": "27413"
+      }
+    },
+    "leaks": []
+  },
+  "steps": {
+    "total": 8,
+    "finished_before_compaction": [
+      1,
+      2,
+      3,
+      4
+    ],
+    "finished_at_end": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8
+    ],
+    "redone": [],
+    "undone": []
+  },
+  "wrong_choice": [],
+  "evidence_before_compaction": [
+    {
+      "number": 1,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    },
+    {
+      "number": 2,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    },
+    {
+      "number": 3,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    },
+    {
+      "number": 4,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    },
+    {
+      "number": 5,
+      "file_present": false,
+      "file_correct": false,
+      "ledger_lines": 0,
+      "commits": 0,
+      "commit_events": 0,
+      "reverted": false
+    },
+    {
+      "number": 6,
+      "file_present": false,
+      "file_correct": false,
+      "ledger_lines": 0,
+      "commits": 0,
+      "commit_events": 0,
+      "reverted": false
+    },
+    {
+      "number": 7,
+      "file_present": false,
+      "file_correct": false,
+      "ledger_lines": 0,
+      "commits": 0,
+      "commit_events": 0,
+      "reverted": false
+    },
+    {
+      "number": 8,
+      "file_present": false,
+      "file_correct": false,
+      "ledger_lines": 0,
+      "commits": 0,
+      "commit_events": 0,
+      "reverted": false
+    }
+  ],
+  "evidence_at_end": [
+    {
+      "number": 1,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    },
+    {
+      "number": 2,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    },
+    {
+      "number": 3,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    },
+    {
+      "number": 4,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    },
+    {
+      "number": 5,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    },
+    {
+      "number": 6,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    },
+    {
+      "number": 7,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    },
+    {
+      "number": 8,
+      "file_present": true,
+      "file_correct": true,
+      "ledger_lines": 1,
+      "commits": 1,
+      "commit_events": 1,
+      "reverted": false
+    }
+  ],
+  "turns": [
+    {
+      "is_error": false,
+      "num_turns": 22
+    },
+    {
+      "is_error": false,
+      "num_turns": 0
+    },
+    {
+      "is_error": false,
+      "num_turns": 22
+    }
+  ],
+  "verdict": "pass",
+  "reasons": [
+    "every step finished exactly once with the choices made before /compact"
+  ]
+}
