@@ -1,0 +1,71 @@
+T11 real run: Wake tracks a branch on GitHub that moves 3 times
+================================================================
+Date: 2026-11-25. Built from commit 2603ac2 on branch claude/t11-track-cloud-task (debug build of the `wake` binary).
+
+Who moved the branch: the engineer's own pushes (a Claude Code session, not a cloud task). No cloud task was started.
+The branch: claude/t11-throwaway on https://github.com/cpeaustriajc/wake.git. It was absent before this run
+(first ls-remote below) and is left in place on origin afterwards, at c0a7ad0, with three commits on top of main (359b53f).
+
+Setup: the tracked folder and the mover are two separate plain clones of the repository, so the pushes never touch the tracked folder.
+The daemon ran with its default polling interval (15 s), a socket and a database in a fresh scratch folder, and no WAKE_CLOUD_POLL_MS.
+One local agent (progress file written by hand, started with `wake agent start` and WAKE_CLAUDE=/usr/bin/true so no Claude login is used)
+shares the list. "N s after the push" is measured by a loop that runs `wake agents` once per second, so it has about 1 s of granularity.
+Only one run was started. The script that made this output is not committed; every command it ran is echoed after `$`.
+In the restart section the comment line "wake agents just after the restart" is printed after the listing it refers to, not before.
+
+Result: the three moves showed 10, 12 and 13 seconds after each push (limit: 60 s). The tracked folder stayed on branch main at 359b53f
+with an empty status and one local branch before, during and after. `main` on origin stayed at 359b53f (a "Merge pull request" commit) and `task` stayed absent.
+
+----- raw output of the run -----
+[2026-11-25T12:06:15Z] scratch folder: /var/folders/w3/rwmdqm6918g5y0yzbvp8hcy40000gn/T/wk11.E9JZ (socket and database live there)
+[2026-11-25T12:06:15Z] git version: git version 2.54.0
+[2026-11-25T12:06:15Z] this record is made by the engineer's own pushes; no cloud task is involved
+[2026-11-25T12:06:15Z] $ git ls-remote https://github.com/cpeaustriajc/wake.git refs/heads/main refs/heads/task refs/heads/claude/t11-throwaway
+    359b53f37c0ba819aada5a22c88a66bd4cb2f67c	refs/heads/main
+[2026-11-25T12:06:15Z] $ git clone --quiet https://github.com/cpeaustriajc/wake.git /var/folders/w3/rwmdqm6918g5y0yzbvp8hcy40000gn/T/wk11.E9JZ/tracked
+[2026-11-25T12:06:17Z] $ git clone --quiet https://github.com/cpeaustriajc/wake.git /var/folders/w3/rwmdqm6918g5y0yzbvp8hcy40000gn/T/wk11.E9JZ/mover
+[2026-11-25T12:06:18Z] tracked folder before:
+    branch: main  head: 359b53f  status: []  local branches: main 
+[2026-11-25T12:06:18Z] starting the daemon with the default polling interval (15 s)
+    wake daemon listening on /var/folders/w3/rwmdqm6918g5y0yzbvp8hcy40000gn/T/wk11.E9JZ/w.sock and storing to /var/folders/w3/rwmdqm6918g5y0yzbvp8hcy40000gn/T/wk11.E9JZ/w.db
+[2026-11-25T12:06:19Z] $ /Users/cj/Projects/wake/.claude/worktrees/t12-cloud-start-probe-ee30e0/target/debug/wake agent start /var/folders/w3/rwmdqm6918g5y0yzbvp8hcy40000gn/T/wk11.E9JZ/local
+[2026-11-25T12:06:19Z] $ /Users/cj/Projects/wake/.claude/worktrees/t12-cloud-start-probe-ee30e0/target/debug/wake cloud track claude/t11-throwaway
+    tracking cloud task 1: branch claude/t11-throwaway of /private/var/folders/w3/rwmdqm6918g5y0yzbvp8hcy40000gn/T/wk11.E9JZ/tracked
+[2026-11-25T12:06:21Z] wake agents, branch not pushed yet:
+[2026-11-25T12:06:21Z] $ /Users/cj/Projects/wake/.claude/worktrees/t12-cloud-start-probe-ee30e0/target/debug/wake agents
+    A local agent that shares the list  plan  2026-11-25T12:00:00Z  local  /private/var/folders/w3/rwmdqm6918g5y0yzbvp8hcy40000gn/T/wk11.E9JZ/local
+    (branch not pushed yet)             -     -                     cloud  /private/var/folders/w3/rwmdqm6918g5y0yzbvp8hcy40000gn/T/wk11.E9JZ/tracked (branch claude/t11-throwaway)
+[2026-11-25T12:06:41Z] move 1: pushing commit efde82b (plan / Throwaway move one: reading the repo)
+    remote: 
+    remote: Create a pull request for 'claude/t11-throwaway' on GitHub by visiting:        
+    remote:      https://github.com/cpeaustriajc/wake/pull/new/claude/t11-throwaway        
+    remote: 
+[2026-11-25T12:06:43Z] move 1: pushed
+[2026-11-25T12:06:51Z] move 1: wake agents first showed 'Throwaway move one: reading the repo' 10 s after the push
+    A local agent that shares the list    plan  2026-11-25T12:00:00Z  local  /private/var/folders/w3/rwmdqm6918g5y0yzbvp8hcy40000gn/T/wk11.E9JZ/local
+    Throwaway move one: reading the repo  plan  2026-11-25T12:06:41Z  cloud  /private/var/folders/w3/rwmdqm6918g5y0yzbvp8hcy40000gn/T/wk11.E9JZ/tracked (branch claude/t11-throwaway)
+[2026-11-25T12:07:11Z] move 2: pushing commit 81a1185 (build / Throwaway move two: writing the parser)
+[2026-11-25T12:07:13Z] move 2: pushed
+[2026-11-25T12:07:23Z] move 2: wake agents first showed 'Throwaway move two: writing the parser' 12 s after the push
+    A local agent that shares the list      plan   2026-11-25T12:00:00Z  local  /private/var/folders/w3/rwmdqm6918g5y0yzbvp8hcy40000gn/T/wk11.E9JZ/local
+    Throwaway move two: writing the parser  build  2026-11-25T12:07:11Z  cloud  /private/var/folders/w3/rwmdqm6918g5y0yzbvp8hcy40000gn/T/wk11.E9JZ/tracked (branch claude/t11-throwaway)
+[2026-11-25T12:07:43Z] move 3: pushing commit c0a7ad0 (review / Throwaway move three: parser done)
+[2026-11-25T12:07:46Z] move 3: pushed
+[2026-11-25T12:07:56Z] move 3: wake agents first showed 'Throwaway move three: parser done' 13 s after the push
+    A local agent that shares the list  plan    2026-11-25T12:00:00Z  local  /private/var/folders/w3/rwmdqm6918g5y0yzbvp8hcy40000gn/T/wk11.E9JZ/local
+    Throwaway move three: parser done   review  2026-11-25T12:07:43Z  cloud  /private/var/folders/w3/rwmdqm6918g5y0yzbvp8hcy40000gn/T/wk11.E9JZ/tracked (branch claude/t11-throwaway)
+[2026-11-25T12:07:56Z] tracked folder after the three moves:
+    branch: main  head: 359b53f  status: []  local branches: main 
+[2026-11-25T12:07:56Z] restarting the daemon (kill, start again)
+    A local agent that shares the list  plan    2026-11-25T12:00:00Z  local  /private/var/folders/w3/rwmdqm6918g5y0yzbvp8hcy40000gn/T/wk11.E9JZ/local
+    Throwaway move three: parser done   review  2026-11-25T12:07:43Z  cloud  /private/var/folders/w3/rwmdqm6918g5y0yzbvp8hcy40000gn/T/wk11.E9JZ/tracked (branch claude/t11-throwaway)
+[2026-11-25T12:07:57Z] wake agents just after the restart (first line may read '(not read yet)' for a moment)
+[2026-11-25T12:08:00Z] wake agents 3 s after the restart:
+    A local agent that shares the list  plan    2026-11-25T12:00:00Z  local  /private/var/folders/w3/rwmdqm6918g5y0yzbvp8hcy40000gn/T/wk11.E9JZ/local
+    Throwaway move three: parser done   review  2026-11-25T12:07:43Z  cloud  /private/var/folders/w3/rwmdqm6918g5y0yzbvp8hcy40000gn/T/wk11.E9JZ/tracked (branch claude/t11-throwaway)
+[2026-11-25T12:08:00Z] tracked folder at the end:
+    branch: main  head: 359b53f  status: []  local branches: main 
+[2026-11-25T12:08:00Z] $ git ls-remote https://github.com/cpeaustriajc/wake.git refs/heads/main refs/heads/task refs/heads/claude/t11-throwaway
+    c0a7ad046dd4e46fbadb663f00e430e9513776de	refs/heads/claude/t11-throwaway
+    359b53f37c0ba819aada5a22c88a66bd4cb2f67c	refs/heads/main
+[2026-11-25T12:08:01Z] scratch folder kept at /var/folders/w3/rwmdqm6918g5y0yzbvp8hcy40000gn/T/wk11.E9JZ

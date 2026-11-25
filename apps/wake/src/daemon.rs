@@ -2,7 +2,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::process::ExitCode;
 
-use wake_daemon::{Store, bind, serve};
+use wake_daemon::{Store, bind, serve_polling};
 
 use crate::paths;
 
@@ -22,6 +22,7 @@ pub(crate) fn run() -> Result<ExitCode, String> {
         socket.display(),
         database.display()
     );
-    serve(&listener, store).map_err(|error| error.to_string())?;
+    serve_polling(&listener, store, paths::cloud_poll_interval()?)
+        .map_err(|error| error.to_string())?;
     Ok(ExitCode::SUCCESS)
 }

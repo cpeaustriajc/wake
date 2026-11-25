@@ -46,6 +46,7 @@ pub(crate) fn entry(agent: StoredAgent) -> AgentEntry {
         id: agent.id,
         folder: agent.folder,
         location: agent.location,
+        branch: None,
         started_at: agent.started_at,
         progress,
     }

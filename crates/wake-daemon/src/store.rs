@@ -22,6 +22,13 @@ CREATE TABLE IF NOT EXISTS agents (
     folder TEXT NOT NULL UNIQUE,
     location TEXT NOT NULL,
     started_at INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS cloud_tasks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    folder TEXT NOT NULL,
+    branch TEXT NOT NULL,
+    tracked_at INTEGER NOT NULL,
+    UNIQUE (folder, branch)
 );";
 
 /// A compaction as stored.
@@ -46,6 +53,19 @@ pub struct StoredAgent {
     pub location: Location,
     /// When the daemon last registered the agent, in Unix seconds.
     pub started_at: i64,
+}
+
+/// A tracked cloud task as stored.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct StoredCloudTask {
+    /// The row's ID, increasing in the order tasks were first tracked.
+    pub id: i64,
+    /// The folder of the repository whose remote `origin` holds the branch.
+    pub folder: String,
+    /// The branch the cloud task pushes to.
+    pub branch: String,
+    /// When the daemon first tracked the task, in Unix seconds.
+    pub tracked_at: i64,
 }
 
 fn now() -> i64 {
@@ -172,6 +192,45 @@ impl Store {
                 folder: row.get(1)?,
                 location,
                 started_at: row.get(3)?,
+            })
+        })?;
+        Ok(rows.collect::<Result<Vec<_>, _>>()?)
+    }
+
+    /// Stores a cloud task to follow and returns its row ID. A folder and
+    /// branch that are already stored keep their row and ID.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Sqlite`] if the write fails.
+    pub fn track_cloud_task(&self, folder: &str, branch: &str) -> Result<i64, Error> {
+        self.connection.execute(
+            "INSERT INTO cloud_tasks (folder, branch, tracked_at) VALUES (?1, ?2, ?3)
+             ON CONFLICT(folder, branch) DO NOTHING",
+            params![folder, branch, now()],
+        )?;
+        Ok(self.connection.query_row(
+            "SELECT id FROM cloud_tasks WHERE folder = ?1 AND branch = ?2",
+            params![folder, branch],
+            |row| row.get(0),
+        )?)
+    }
+
+    /// Every tracked cloud task, oldest first.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`Error::Sqlite`] if the query fails.
+    pub fn cloud_tasks(&self) -> Result<Vec<StoredCloudTask>, Error> {
+        let mut statement = self
+            .connection
+            .prepare("SELECT id, folder, branch, tracked_at FROM cloud_tasks ORDER BY id")?;
+        let rows = statement.query_map([], |row| {
+            Ok(StoredCloudTask {
+                id: row.get(0)?,
+                folder: row.get(1)?,
+                branch: row.get(2)?,
+                tracked_at: row.get(3)?,
             })
         })?;
         Ok(rows.collect::<Result<Vec<_>, _>>()?)
