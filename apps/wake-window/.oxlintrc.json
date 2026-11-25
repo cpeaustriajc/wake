@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "jsx-a11y", "promise", "node"],
+  "jsPlugins": ["eslint-plugin-no-comments"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "pedantic": "error",
+    "perf": "error",
+    "restriction": "error",
+    "style": "error"
+  },
+  "options": {
+    "typeAware": true,
+    "denyWarnings": true,
+    "reportUnusedDisableDirectives": "error",
+    "respectEslintDisableDirectives": false
+  },
+  "ignorePatterns": ["src/renderer/keel/**", "out/**"],
+  "rules": {
+    "no-comments/disallowComments": "error",
+    "unicorn/filename-case": ["error", { "case": "kebabCase" }]
+  }
+}
