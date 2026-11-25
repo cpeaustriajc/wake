@@ -12,6 +12,23 @@ use crate::progress::{ProgressError, ProgressFile};
 
 const PROGRESS_PATH: &str = ".wake/progress.md";
 const LS_REMOTE_NO_MATCH: i32 = 2;
+const REPOSITORY_VARIABLES: [&str; 15] = [
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_CONFIG",
+    "GIT_CONFIG_PARAMETERS",
+    "GIT_CONFIG_COUNT",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_IMPLICIT_WORK_TREE",
+    "GIT_GRAFT_FILE",
+    "GIT_INDEX_FILE",
+    "GIT_NO_REPLACE_OBJECTS",
+    "GIT_REPLACE_REF_BASE",
+    "GIT_PREFIX",
+    "GIT_SHALLOW_FILE",
+    "GIT_COMMON_DIR",
+];
 
 /// What the progress file held on one branch at one commit.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -91,7 +108,11 @@ impl Error for BranchError {
 }
 
 fn git(repo: &Path, args: &[&str]) -> Result<Output, BranchError> {
-    Command::new("git")
+    let mut command = Command::new("git");
+    for variable in REPOSITORY_VARIABLES {
+        command.env_remove(variable);
+    }
+    command
         .arg("-C")
         .arg(repo)
         .args(args)

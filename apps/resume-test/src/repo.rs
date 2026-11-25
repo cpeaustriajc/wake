@@ -8,9 +8,30 @@ use crate::judge::StepEvidence;
 use crate::task::{LEDGER, STEP_COUNT, commit_subject, ledger_line, step_content, step_file};
 
 const NULL_CONFIG: &str = "/dev/null";
+const REPOSITORY_VARIABLES: [&str; 15] = [
+    "GIT_ALTERNATE_OBJECT_DIRECTORIES",
+    "GIT_CONFIG",
+    "GIT_CONFIG_PARAMETERS",
+    "GIT_CONFIG_COUNT",
+    "GIT_OBJECT_DIRECTORY",
+    "GIT_DIR",
+    "GIT_WORK_TREE",
+    "GIT_IMPLICIT_WORK_TREE",
+    "GIT_GRAFT_FILE",
+    "GIT_INDEX_FILE",
+    "GIT_NO_REPLACE_OBJECTS",
+    "GIT_REPLACE_REF_BASE",
+    "GIT_PREFIX",
+    "GIT_SHALLOW_FILE",
+    "GIT_COMMON_DIR",
+];
 
 fn git(folder: &Path, arguments: &[&str]) -> Result<String, String> {
-    let output = Command::new("git")
+    let mut command = Command::new("git");
+    for variable in REPOSITORY_VARIABLES {
+        command.env_remove(variable);
+    }
+    let output = command
         .arg("-C")
         .arg(folder)
         .args(arguments)
