@@ -1,0 +1,48 @@
+Live run of `wake agents` on 2026-11-25, daemon from this branch, real `claude` 2.1.331.
+Environment: WAKE_SOCKET=/tmp/wk10/w.sock, WAKE_DB=<scratch>/wake.db, <scratch> = a scratch folder holding agent folders a and b.
+
+Every run that started:
+1. `wake agents` with the first socket path (too long for a Unix socket, >104 bytes): failed with "path must be shorter than SUN_LEN"; the daemon did not start. Retried with the short socket path above.
+2. `wake agent start <scratch>/a "<one-line task>"`: real claude, exit 0, 4 turns, wrote .wake/progress.md itself.
+3. `wake agent start <scratch>/b "<one-line task>"`: real claude, exit 0, 5 turns, wrote .wake/progress.md itself.
+4. One earlier attempt to restart the daemon with `pkill -f` was refused by the permission guard before it ran; redone with the daemon's own PID.
+Steps marked "(simulated edit)" are shell edits to a progress file, not agent output.
+
+== Part 1: two real agents, then edit, invalid and missing files ==
+$ cat a/.wake/progress.md
+---
+phase: done
+headline: Folder a is the workspace for agent a in a live test of the wake daemon.
+updated: 2026-11-25T11:33:45Z
+---
+
+Created this file as asked. Folder a holds only .claude/settings.local.json.
+
+$ wake agents
+Folder a is the workspace for agent a in a live test of the wake daemon.       done  2026-11-25T11:33:45Z  local  <scratch>/a
+Folder b is the working folder for agent b in a live test of the wake daemon.  done  2026-11-25T11:33:38Z  local  <scratch>/b
+exit=0
+
+$ (simulated edit: sed sets phase review and a new headline in a/.wake/progress.md)
+$ wake agents
+Folder a now under review                                                      review  2026-11-25T11:33:45Z  local  <scratch>/a
+Folder b is the working folder for agent b in a live test of the wake daemon.  done    2026-11-25T11:33:38Z  local  <scratch>/b
+
+$ (simulated edit: a/.wake/progress.md overwritten with junk, b/.wake/progress.md removed)
+$ wake agents
+(invalid progress file)  -  -  local  <scratch>/a
+(no progress file)       -  -  local  <scratch>/b
+
+== Part 2: daemon restart (agent a's file rewritten by hand first, simulated edit) ==
+$ wake agents   (daemon up)
+Fixed again after the restart  build  2026-11-25T12:00:00Z  local  <scratch>/a
+(no progress file)             -      -                     local  <scratch>/b
+
+$ wake agents   (daemon killed)
+wake: the daemon is not running: cannot reach /tmp/wk10/w.sock: Connection refused (os error 61)
+exit=1
+
+$ wake agents   (daemon restarted)
+Fixed again after the restart  build  2026-11-25T12:00:00Z  local  <scratch>/a
+(no progress file)             -      -                     local  <scratch>/b
+same list before and after the restart

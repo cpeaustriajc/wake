@@ -5,7 +5,9 @@ use std::process::ExitCode;
 
 use wake_claude::agent::{Agent, AgentConfig, Message};
 use wake_claude::stream::Event;
+use wake_daemon::register_agent;
 
+use crate::agents;
 use crate::paths;
 
 const CLAUDE_ENV: &str = "WAKE_CLAUDE";
@@ -63,11 +65,14 @@ pub(crate) fn start(folder: &str, messages: &[&str]) -> Result<ExitCode, String>
     let folder = PathBuf::from(folder)
         .canonicalize()
         .map_err(|error| format!("{folder}: {error}"))?;
+    let socket = paths::socket()?;
+    register_agent(&socket, &folder.to_string_lossy())
+        .map_err(|error| agents::daemon_down(&socket, &error))?;
     let config = AgentConfig {
         folder,
         claude: env::var_os(CLAUDE_ENV).map_or_else(|| DEFAULT_CLAUDE.into(), PathBuf::from),
         wake: env::current_exe().map_err(|error| error.to_string())?,
-        socket: paths::socket()?,
+        socket,
     };
     let mut agent =
         Agent::start(&config).map_err(|error| format!("cannot start claude: {error}"))?;

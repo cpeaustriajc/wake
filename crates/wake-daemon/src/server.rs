@@ -5,15 +5,19 @@ use std::io::{BufRead, BufReader, Write};
 use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::Path;
-use std::sync::{Arc, Mutex, PoisonError};
+use std::sync::{Arc, Mutex, MutexGuard, PoisonError};
 use std::thread;
 
+use serde::Serialize;
+use serde::de::DeserializeOwned;
 use serde_json::{Value, json};
 
+use crate::agents::entry;
 use crate::error::Error;
 use crate::protocol::{
-    CompactionReport, INTERNAL_ERROR, INVALID_PARAMS, METHOD_NOT_FOUND, PARSE_ERROR,
-    RECORD_COMPACTION, Request, Response, VERSION,
+    AgentEntry, AgentList, AgentRegistration, CompactionReport, INTERNAL_ERROR, INVALID_PARAMS,
+    LIST_AGENTS, Location, METHOD_NOT_FOUND, PARSE_ERROR, RECORD_COMPACTION, REGISTER_AGENT,
+    Request, Response, VERSION,
 };
 use crate::store::Store;
 
@@ -66,46 +70,70 @@ fn handle(stream: UnixStream, store: &Mutex<Store>) -> Result<(), Error> {
     Ok(())
 }
 
+fn lock(store: &Mutex<Store>) -> MutexGuard<'_, Store> {
+    store.lock().unwrap_or_else(PoisonError::into_inner)
+}
+
+fn reply<T: Serialize>(id: u64, outcome: Result<T, Error>) -> Response {
+    match outcome.and_then(|value| Ok(serde_json::to_value(value)?)) {
+        Ok(value) => Response::success(id, value),
+        Err(error) => Response::failure(id, INTERNAL_ERROR, error.to_string()),
+    }
+}
+
 fn answer(line: &str, store: &Mutex<Store>) -> Response {
     let request: Request = match serde_json::from_str(line) {
         Ok(request) => request,
         Err(error) => return Response::failure(0, PARSE_ERROR, error.to_string()),
     };
-    if request.jsonrpc != VERSION || request.method != RECORD_COMPACTION {
+    let id = request.id;
+    if request.jsonrpc != VERSION {
         return Response::failure(
-            request.id,
+            id,
             METHOD_NOT_FOUND,
             format!("unknown method `{}`", request.method),
         );
     }
-    let report: CompactionReport = match serde_json::from_value(request.params) {
-        Ok(report) => report,
-        Err(error) => return Response::failure(request.id, INVALID_PARAMS, error.to_string()),
-    };
-    let stored = store
-        .lock()
-        .unwrap_or_else(PoisonError::into_inner)
-        .record_compaction(&report);
-    match stored {
-        Ok(id) => Response::success(request.id, json!({ "id": id })),
-        Err(error) => Response::failure(request.id, INTERNAL_ERROR, error.to_string()),
+    match request.method.as_str() {
+        RECORD_COMPACTION => with_params(id, request.params, |report: CompactionReport| {
+            let stored = lock(store).record_compaction(&report);
+            reply(id, stored.map(|row| json!({ "id": row })))
+        }),
+        REGISTER_AGENT => with_params(id, request.params, |agent: AgentRegistration| {
+            let stored = lock(store).register_agent(&agent.folder, Location::Local);
+            reply(id, stored.map(|row| json!({ "id": row })))
+        }),
+        LIST_AGENTS => {
+            let stored = lock(store).agents();
+            reply(
+                id,
+                stored.map(|agents| AgentList {
+                    agents: agents.into_iter().map(entry).collect(),
+                }),
+            )
+        }
+        method => Response::failure(id, METHOD_NOT_FOUND, format!("unknown method `{method}`")),
     }
 }
 
-/// Tells the daemon at `socket` that a compaction happened and returns the
-/// ID of the row it stored.
-///
-/// # Errors
-///
-/// Returns [`Error::Io`] if the daemon cannot be reached, [`Error::Rpc`] if it
-/// answers with an error, and [`Error::NoResponse`] if it hangs up.
-pub fn record_compaction(socket: &Path, report: &CompactionReport) -> Result<i64, Error> {
+fn with_params<T: DeserializeOwned>(
+    id: u64,
+    params: Value,
+    run: impl FnOnce(T) -> Response,
+) -> Response {
+    match serde_json::from_value(params) {
+        Ok(parsed) => run(parsed),
+        Err(error) => Response::failure(id, INVALID_PARAMS, error.to_string()),
+    }
+}
+
+fn call(socket: &Path, method: &str, params: &Value) -> Result<Value, Error> {
     let stream = UnixStream::connect(socket)?;
     let request = json!({
         "jsonrpc": VERSION,
         "id": 1,
-        "method": RECORD_COMPACTION,
-        "params": report,
+        "method": method,
+        "params": params,
     });
     let mut writer = stream.try_clone()?;
     writeln!(writer, "{request}")?;
@@ -117,9 +145,52 @@ pub fn record_compaction(socket: &Path, report: &CompactionReport) -> Result<i64
     if let Some(error) = response.error {
         return Err(Error::Rpc(error));
     }
-    let result: Value = response.result.ok_or(Error::NoResponse)?;
+    response.result.ok_or(Error::NoResponse)
+}
+
+fn row_id(result: &Value) -> Result<i64, Error> {
     result
         .get("id")
         .and_then(Value::as_i64)
         .ok_or(Error::NoResponse)
+}
+
+/// Tells the daemon at `socket` that a compaction happened and returns the
+/// ID of the row it stored.
+///
+/// # Errors
+///
+/// Returns [`Error::Io`] if the daemon cannot be reached, [`Error::Rpc`] if it
+/// answers with an error, and [`Error::NoResponse`] if it hangs up.
+pub fn record_compaction(socket: &Path, report: &CompactionReport) -> Result<i64, Error> {
+    row_id(&call(socket, RECORD_COMPACTION, &json!(report))?)
+}
+
+/// Tells the daemon at `socket` that a local agent started in `folder` and
+/// returns the agent's ID. Registering the same folder again returns the same
+/// ID.
+///
+/// # Errors
+///
+/// Returns [`Error::Io`] if the daemon cannot be reached, [`Error::Rpc`] if it
+/// answers with an error, and [`Error::NoResponse`] if it hangs up.
+pub fn register_agent(socket: &Path, folder: &str) -> Result<i64, Error> {
+    let registration = AgentRegistration {
+        folder: folder.to_owned(),
+    };
+    row_id(&call(socket, REGISTER_AGENT, &json!(registration))?)
+}
+
+/// Asks the daemon at `socket` for every agent it knows, oldest first. The
+/// daemon reads each agent's progress file when it answers, so a file that
+/// changed since the last call shows its new content.
+///
+/// # Errors
+///
+/// Returns [`Error::Io`] if the daemon cannot be reached, [`Error::Rpc`] if it
+/// answers with an error, [`Error::Json`] if the answer is not a list of
+/// agents, and [`Error::NoResponse`] if it hangs up.
+pub fn list_agents(socket: &Path) -> Result<Vec<AgentEntry>, Error> {
+    let list: AgentList = serde_json::from_value(call(socket, LIST_AGENTS, &Value::Null)?)?;
+    Ok(list.agents)
 }
