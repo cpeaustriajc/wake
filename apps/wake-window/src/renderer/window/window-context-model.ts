@@ -142,6 +142,9 @@ const fleetSettled = (context: WindowContext): Partial<WindowContext> => {
   );
   return {
     asked: [...context.asked, ...fresh],
+    grips: Array.filter(context.grips, (grip) =>
+      Array.some(machines, (machine) => machine.key === grip.key)
+    ),
     held: { ...waiting, ...slots },
     saves: [...context.saves, ...savesFor(context, fresh, shown)],
   };
@@ -198,6 +201,9 @@ const gripped = ({ context, press }: WithPress): Partial<WindowContext> => ({
   ],
 });
 
+const grippedTiles = (context: WindowContext): readonly Grip[] =>
+  Array.filter(context.grips, (grip) => knowsTile(context, grip.key));
+
 const pulledFar = ({ context, pointer }: WithPointer): boolean =>
   Array.some(context.grips, (grip) => pulledPast({ ...pointer, grip }));
 
@@ -208,7 +214,7 @@ const dragged = ({
   held: {
     ...context.held,
     ...Record.fromEntries(
-      Array.map(context.grips, (grip) => [
+      Array.map(grippedTiles(context), (grip) => [
         grip.key,
         draggedTo({ ...pointer, grip }),
       ])
@@ -218,16 +224,47 @@ const dragged = ({
 
 const released = (): Partial<WindowContext> => ({ grips: [] });
 
-const dropped = (context: WindowContext): Partial<WindowContext> => ({
-  grips: [],
-  saves: [
-    ...context.saves,
-    ...savesFor(
-      context,
-      Array.map(context.grips, ({ key }) => key),
-      layoutIn(context)
+const movedKeys = (
+  context: WindowContext,
+  keys: readonly string[],
+  layout: Layout
+): readonly string[] =>
+  Array.map(
+    Array.filter(tilesIn(context), ({ key, spot }) => {
+      const to = positionOf({ key, layout });
+      return (
+        Array.some(keys, (moved) => moved === key) &&
+        !(spot !== null && spot.x === to.x && spot.y === to.y)
+      );
+    }),
+    ({ key }) => key
+  );
+
+const settledMove = (
+  context: WindowContext,
+  keys: readonly string[],
+  held: Layout
+): Partial<WindowContext> => {
+  const layout = shownLayout({ held, machines: tilesIn(context) });
+  const moved = movedKeys(context, keys, layout);
+  return {
+    held: Record.filter(
+      held,
+      (_position, key) =>
+        !Array.some(keys, (dropped) => dropped === key) ||
+        Array.some(moved, (kept) => kept === key)
     ),
-  ],
+    saves: [...context.saves, ...savesFor(context, moved, layout)],
+  };
+};
+
+const dropped = (context: WindowContext): Partial<WindowContext> => ({
+  ...settledMove(
+    context,
+    Array.map(context.grips, ({ key }) => key),
+    context.held
+  ),
+  grips: [],
 });
 
 const nudged = ({ context, nudge }: WithNudge): Partial<WindowContext> => {
@@ -238,9 +275,8 @@ const nudged = ({ context, nudge }: WithNudge): Partial<WindowContext> => {
     from: positionOf({ key, layout: layoutIn(context) }),
   });
   return {
+    ...settledMove(context, [key], Record.set(context.held, key, to)),
     failures: [],
-    held: Record.set(context.held, key, to),
-    saves: [...context.saves, ...savesFor(context, [key], { [key]: to })],
   };
 };
 

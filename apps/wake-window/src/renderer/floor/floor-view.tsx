@@ -14,7 +14,12 @@ import {
 } from "#/renderer/floor/floor-notice.tsx";
 import { MachineTile } from "#/renderer/floor/machine-tile.tsx";
 import { Minimap } from "#/renderer/floor/minimap.tsx";
-import { color, radius, shadow } from "#/renderer/keel/keel-tokens.stylex.ts";
+import {
+  color,
+  radius,
+  shadow,
+  space,
+} from "#/renderer/keel/keel-tokens.stylex.ts";
 import { layoutIn, tilesIn } from "#/renderer/window/window-context-model.ts";
 import {
   useWindow,
@@ -43,6 +48,13 @@ const styles = stylex.create({
     overflow: "auto",
     position: "absolute",
   },
+  column: {
+    display: "flex",
+    flexDirection: "column",
+    flexGrow: 1,
+    gap: space.s3,
+    minHeight: 0,
+  },
   frame: { flexGrow: 1, minHeight: 0, position: "relative" },
   grid: (step: number) => ({ backgroundSize: `${step}px ${step}px` }),
 });
@@ -60,31 +72,33 @@ const FloorView = (): ReactElement => {
   );
   const empty = !Array.isReadonlyArrayNonEmpty(tiles);
   return (
-    <div {...stylex.props(styles.frame)}>
-      <div {...stylex.props(styles.floor, styles.grid(GRID_STEP))} data-floor>
-        <span
-          {...stylex.props(styles.extent(extent.x, extent.y))}
-          aria-hidden="true"
-        />
-        {Array.map(tiles, (tile) => (
-          <MachineTile
-            key={tile.key}
-            onEvent={send}
-            position={positionOf({ key: tile.key, layout })}
-            tile={tile}
-          />
-        ))}
-        {connecting ? <FloorSkeleton /> : null}
-        {empty && !connecting ? (
-          <FloorNotice trouble={context.trouble} />
-        ) : null}
-      </div>
+    <div {...stylex.props(styles.column)}>
       <FloorAlerts
         failures={context.failures}
         stale={!empty}
         trouble={context.trouble}
       />
-      <Minimap layout={layout} tiles={tiles} />
+      <div {...stylex.props(styles.frame)}>
+        <div {...stylex.props(styles.floor, styles.grid(GRID_STEP))} data-floor>
+          <span
+            {...stylex.props(styles.extent(extent.x, extent.y))}
+            aria-hidden="true"
+          />
+          {Array.map(tiles, (tile) => (
+            <MachineTile
+              key={tile.key}
+              onEvent={send}
+              position={positionOf({ key: tile.key, layout })}
+              tile={tile}
+            />
+          ))}
+          {connecting ? <FloorSkeleton /> : null}
+          {empty && !connecting ? (
+            <FloorNotice trouble={context.trouble} />
+          ) : null}
+        </div>
+        <Minimap layout={layout} tiles={tiles} />
+      </div>
     </div>
   );
 };

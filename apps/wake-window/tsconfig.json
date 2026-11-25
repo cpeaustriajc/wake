@@ -180,7 +180,20 @@
         "ignoreEffectWarningsInTscExitCode": false,
         "ignoreEffectErrorsInTscExitCode": false,
         "missingDiagnosticNextLine": "error",
-        "allowedUnstableApis": ["@effect/vitest"]
+        "allowedUnstableApis": ["@effect/vitest"],
+        "overrides": [
+          {
+            "include": [
+              "tests/daemon-contract.test.ts",
+              "tests/keel-tokens.test.ts"
+            ],
+            "options": {
+              "diagnosticSeverity": {
+                "nodeBuiltinImport": "off"
+              }
+            }
+          }
+        ]
       }
     ]
   },

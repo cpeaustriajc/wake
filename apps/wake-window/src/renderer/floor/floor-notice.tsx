@@ -22,12 +22,7 @@ const styles = stylex.create({
     display: "flex",
     flexDirection: "column",
     gap: space.s2,
-    left: space.s3,
     maxWidth: 560,
-    position: "absolute",
-    right: space.s3,
-    top: space.s3,
-    zIndex: 3,
   },
   card: { maxWidth: 460 },
   notice: {
@@ -201,13 +196,19 @@ const FloorAlerts = ({
   failures,
   stale,
   trouble,
-}: FloorAlertsProps): ReactElement => (
-  <div {...stylex.props(styles.alerts)}>
-    {stale ? <TroubleAlert trouble={trouble} /> : null}
-    {Array.map(failures, (failure) => (
-      <PlaceAlert failure={failure} key={failure.key} />
-    ))}
-  </div>
-);
+}: FloorAlertsProps): ReactElement | null => {
+  const troubled = stale && trouble.kind !== "none";
+  if (!troubled && !Array.isReadonlyArrayNonEmpty(failures)) {
+    return null;
+  }
+  return (
+    <div {...stylex.props(styles.alerts)}>
+      {troubled ? <TroubleAlert trouble={trouble} /> : null}
+      {Array.map(failures, (failure) => (
+        <PlaceAlert failure={failure} key={failure.key} />
+      ))}
+    </div>
+  );
+};
 
 export { FloorAlerts, FloorNotice, FloorSkeleton };
