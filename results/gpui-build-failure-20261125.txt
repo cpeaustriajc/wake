@@ -1,0 +1,16 @@
+command: cargo build -p wake-window --locked --bin fleet_spike
+date: 2026-11-25, Apple M4, Xcode 27.2, rustc 1.100.0
+result: failed
+
+   Compiling quick-error v2.0.1
+   Compiling objc2-metal v0.3.2
+   Compiling thiserror v2.0.21
+   Compiling thiserror-impl v2.0.21
+error: gpui_apple@0.1.0: metal shader compilation failed:
+error: failed to run custom build command for `gpui_apple v0.1.0 (https://github.com/zed-industries/zed#2b248e60)`
+  cargo::error=metal shader compilation failed:
+  error: error: cannot execute tool 'metal' due to missing Metal Toolchain; use: xcodebuild -downloadComponent MetalToolchain
+cargo build -p wake-window --locked --bin fleet_spike  157.62s user 17.21s system 586% cpu 29.820 total
+
+Build Version: 27B47
+Status: uninstalled

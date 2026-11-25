@@ -1,0 +1,76 @@
+[package]
+name = "rune-fleet"
+description = "Spike: the Wake fleet view on Rune, to compare with GPUI (issue #22)"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "AGPL-3.0-or-later"
+repository = "https://github.com/cpeaustriajc/wake"
+
+[workspace]
+resolver = "3"
+
+[dependencies]
+rune = { version = "0.0.1", git = "https://github.com/anomalyco/rune", rev = "5a6ae9dc3d19ec923a590758fd29e38e1d507366" }
+rune-kit = { version = "0.0.1", git = "https://github.com/anomalyco/rune", rev = "5a6ae9dc3d19ec923a590758fd29e38e1d507366", default-features = false }
+
+[patch.crates-io]
+winit = { git = "https://github.com/anomalyco/rune", rev = "5a6ae9dc3d19ec923a590758fd29e38e1d507366" }
+sctk-adwaita = { git = "https://github.com/anomalyco/rune", rev = "5a6ae9dc3d19ec923a590758fd29e38e1d507366" }
+parley_engine = { git = "https://github.com/anomalyco/rune", rev = "5a6ae9dc3d19ec923a590758fd29e38e1d507366" }
+wgpu-hal = { git = "https://github.com/anomalyco/rune", rev = "5a6ae9dc3d19ec923a590758fd29e38e1d507366" }
+naga = { git = "https://github.com/anomalyco/rune", rev = "5a6ae9dc3d19ec923a590758fd29e38e1d507366" }
+accesskit_windows = { git = "https://github.com/anomalyco/rune", rev = "5a6ae9dc3d19ec923a590758fd29e38e1d507366" }
+accesskit_macos = { git = "https://github.com/anomalyco/rune", rev = "5a6ae9dc3d19ec923a590758fd29e38e1d507366" }
+accesskit_atspi_common = { git = "https://github.com/anomalyco/rune", rev = "5a6ae9dc3d19ec923a590758fd29e38e1d507366" }
+
+[lints.rust]
+unsafe_op_in_unsafe_fn = "warn"
+missing_debug_implementations = "warn"
+missing_docs = "warn"
+unreachable_pub = "warn"
+rust_2018_idioms = { level = "warn", priority = -1 }
+
+[lints.clippy]
+all = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+
+unwrap_used = "warn"
+expect_used = "allow"
+panic_in_result_fn = "warn"
+missing_panics_doc = "warn"
+missing_errors_doc = "warn"
+missing_assert_message = "warn"
+
+allow_attributes = "warn"
+allow_attributes_without_reason = "warn"
+
+undocumented_unsafe_blocks = "warn"
+multiple_unsafe_ops_per_block = "warn"
+
+fn_params_excessive_bools = "warn"
+struct_excessive_bools = "warn"
+clone_on_ref_ptr = "warn"
+redundant_clone = "warn"
+or_fun_call = "warn"
+set_contains_or_insert = "warn"
+rc_buffer = "warn"
+
+exhaustive_enums = "warn"
+
+string_add = "warn"
+wildcard_imports = "warn"
+
+dbg_macro = "warn"
+todo = "warn"
+print_stdout = "warn"
+print_stderr = "warn"
+
+as_conversions = "warn"
+cast_possible_truncation = "warn"
+cast_sign_loss = "warn"
+
+module_name_repetitions = "allow"
+must_use_candidate = "allow"
+module_inception = "allow"
+enum_glob_use = "allow"
