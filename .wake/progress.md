@@ -1,6 +1,6 @@
 ---
-phase: build
-headline: Throwaway move two: writing the parser
-updated: 2026-11-25T12:07:11Z
+phase: review
+headline: Throwaway move three: parser done
+updated: 2026-11-25T12:07:43Z
 ---
-Move 2 of the throwaway branch.
+Move 3 of the throwaway branch.
