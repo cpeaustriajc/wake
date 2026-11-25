@@ -61,16 +61,16 @@ const PANES: readonly Pane[] = [
 
 const styles = stylex.create({
   body: {
+    gap: space.s4,
     alignItems: "flex-start",
     display: "flex",
     flexWrap: "wrap",
-    gap: space.s4,
   },
   crumbs: {
+    gap: 6,
     alignItems: "center",
     display: "flex",
     flexWrap: "wrap",
-    gap: 6,
   },
   here: {
     fontFamily: font.sans,
@@ -81,20 +81,20 @@ const styles = stylex.create({
   mark: { color: color.inkFaint },
   meta: { color: color.inkMuted, fontSize: 13 },
   panes: {
+    gap: space.s3,
     display: "flex",
     flexBasis: 420,
     flexDirection: "column",
     flexGrow: 999,
     flexShrink: 1,
-    gap: space.s3,
     minWidth: 0,
   },
   phase: { fontWeight: 500 },
   status: {
+    gap: space.s2,
     alignItems: "center",
     display: "flex",
     flexWrap: "wrap",
-    gap: space.s2,
   },
   tabs: { maxWidth: 520 },
   thread: {
@@ -105,12 +105,12 @@ const styles = stylex.create({
     minWidth: 0,
   },
   workspace: {
+    gap: space.s3,
+    overflow: "auto",
     display: "flex",
     flexDirection: "column",
     flexGrow: 1,
-    gap: space.s3,
     minHeight: 0,
-    overflow: "auto",
   },
 });
 

@@ -12,13 +12,13 @@ import { WorkspaceView } from "#/renderer/workspace/workspace-view.tsx";
 const styles = stylex.create({
   app: { display: "flex", flexDirection: "column", height: "100vh" },
   main: {
+    padding: space.s5,
+    gap: space.s3,
     display: "flex",
     flexDirection: "column",
     flexGrow: 1,
-    gap: space.s3,
     minHeight: 0,
     minWidth: 0,
-    padding: space.s5,
   },
 });
 

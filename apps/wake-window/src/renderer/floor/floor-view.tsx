@@ -28,34 +28,34 @@ import {
 
 const styles = stylex.create({
   extent: (width: number, height: number) => ({
-    height,
-    left: 0,
     pointerEvents: "none",
     position: "absolute",
+    height,
+    left: 0,
     top: 0,
     width,
   }),
   floor: {
-    backgroundAttachment: "local",
-    backgroundColor: color.well,
-    backgroundImage: `linear-gradient(${color.hairline} 1px, transparent 1px), linear-gradient(90deg, ${color.hairline} 1px, transparent 1px)`,
+    inset: 0,
     borderColor: color.edgeStrong,
     borderRadius: radius.card,
     borderStyle: "solid",
     borderWidth: 1,
-    boxShadow: shadow.well,
-    inset: 0,
     overflow: "auto",
+    backgroundAttachment: "local",
+    backgroundColor: color.well,
+    backgroundImage: `linear-gradient(${color.hairline} 1px, transparent 1px), linear-gradient(90deg, ${color.hairline} 1px, transparent 1px)`,
+    boxShadow: shadow.well,
     position: "absolute",
   },
   column: {
+    gap: space.s3,
     display: "flex",
     flexDirection: "column",
     flexGrow: 1,
-    gap: space.s3,
     minHeight: 0,
   },
-  frame: { flexGrow: 1, minHeight: 0, position: "relative" },
+  frame: { flexGrow: 1, position: "relative", minHeight: 0 },
   grid: (step: number) => ({ backgroundSize: `${step}px ${step}px` }),
 });
 

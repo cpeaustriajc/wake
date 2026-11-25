@@ -1,6 +1,6 @@
 default: check
 
-check: format unused-dependencies dependencies lint test-location test
+check: format unused-dependencies dependencies lint test-location test window
 
 format:
     cargo fmt --check
@@ -25,8 +25,8 @@ test-location:
     exit 1
 
 window:
-    cargo clippy -p wake-window --all-targets --locked -- -D warnings
-    cargo build -p wake-window --locked
+    cargo build --locked -p wake-cli
+    cd apps/wake-window && npm ci && npm run verify
 
 hooks:
     git config core.hooksPath .githooks

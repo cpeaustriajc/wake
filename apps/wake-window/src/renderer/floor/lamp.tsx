@@ -19,7 +19,13 @@ const tones = stylex.create({
   warning: { backgroundColor: color.warning },
 });
 
-const toneStyles: Readonly<Record<LampTone, stylex.StyleXStyles>> = tones;
+const toneStyles: Readonly<Record<LampTone, stylex.StyleXStyles>> = {
+  action: tones.action,
+  danger: tones.danger,
+  idle: tones.idle,
+  success: tones.success,
+  warning: tones.warning,
+};
 
 const styles = stylex.create({
   lamp: {
@@ -38,8 +44,8 @@ const styles = stylex.create({
     animationDuration: "1.2s",
     animationIterationCount: "infinite",
     animationName: {
-      "@media (prefers-reduced-motion: reduce)": "none",
       default: pulse,
+      "@media (prefers-reduced-motion: reduce)": "none",
     },
     animationTimingFunction: "ease-in-out",
   },

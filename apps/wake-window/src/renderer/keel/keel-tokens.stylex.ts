@@ -1,6 +1,6 @@
 import * as stylex from "@stylexjs/stylex";
 
-const color = stylex.defineConsts({
+export const color = stylex.defineConsts({
   action: "var(--action)",
   actionEdge: "var(--action-edge)",
   actionHi: "var(--action-hi)",
@@ -41,7 +41,7 @@ const color = stylex.defineConsts({
   well: "var(--well)",
 });
 
-const shadow = stylex.defineConsts({
+export const shadow = stylex.defineConsts({
   action: "var(--shadow-action)",
   card: "var(--shadow-card)",
   control: "var(--shadow-control)",
@@ -49,7 +49,7 @@ const shadow = stylex.defineConsts({
   well: "var(--shadow-well)",
 });
 
-const space = stylex.defineConsts({
+export const space = stylex.defineConsts({
   s1: "var(--space-1)",
   s2: "var(--space-2)",
   s3: "var(--space-3)",
@@ -60,7 +60,7 @@ const space = stylex.defineConsts({
   s12: "var(--space-12)",
 });
 
-const radius = stylex.defineConsts({
+export const radius = stylex.defineConsts({
   card: "var(--radius-card)",
   chip: "var(--radius-chip)",
   control: "var(--radius-control)",
@@ -69,20 +69,18 @@ const radius = stylex.defineConsts({
   pill: "var(--radius-pill)",
 });
 
-const height = stylex.defineConsts({
+export const height = stylex.defineConsts({
   lg: "var(--height-lg)",
   md: "var(--height-md)",
   sm: "var(--height-sm)",
   xs: "var(--height-xs)",
 });
 
-const font = stylex.defineConsts({
+export const font = stylex.defineConsts({
   mono: "var(--font-mono)",
   sans: "var(--font-sans)",
 });
 
-const opacity = stylex.defineConsts({
+export const opacity = stylex.defineConsts({
   disabled: "var(--opacity-disabled)",
 });
-
-export { color, font, height, opacity, radius, shadow, space };

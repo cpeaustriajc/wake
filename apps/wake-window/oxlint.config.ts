@@ -126,8 +126,17 @@ const NODE_GLOBALS = [
 
 export default defineConfig({
   extends: [core, react, vitest],
-  ignorePatterns: ["out/**", "src/renderer/keel/**", "src/**/*.model.ts"],
-  jsPlugins: ["eslint-plugin-no-comments"],
+  ignorePatterns: [
+    "lint/**",
+    "out/**",
+    "src/renderer/keel/*.css",
+    "src/**/*.model.ts",
+  ],
+  jsPlugins: [
+    "eslint-plugin-no-comments",
+    "@stylexjs/eslint-plugin",
+    "./lint/wake-styles.mjs",
+  ],
   options: {
     denyWarnings: true,
     reportUnusedDisableDirectives: "error",
@@ -224,10 +233,17 @@ export default defineConfig({
     },
   ],
   rules: {
+    "@stylexjs/enforce-extension": "error",
+    "@stylexjs/no-unused": "error",
+    "@stylexjs/sort-keys": "error",
+    "@stylexjs/valid-shorthands": "error",
+    "@stylexjs/valid-styles": "error",
     "no-comments/disallowComments": "error",
     "no-restricted-imports": bans([...net, ...reactState], everywhere),
     "typescript/promise-function-async": "off",
     "unicorn/no-array-method-this-argument": "off",
     "unicorn/filename-case": ["error", { case: "kebabCase" }],
+    "wake-styles/keel-class-names": "error",
+    "wake-styles/no-raw-style-values": "error",
   },
 });

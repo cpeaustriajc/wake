@@ -19,17 +19,17 @@ const shimmer = stylex.keyframes({ "50%": { opacity: 0.55 } });
 
 const styles = stylex.create({
   alerts: {
+    gap: space.s2,
     display: "flex",
     flexDirection: "column",
-    gap: space.s2,
     maxWidth: 560,
   },
   card: { maxWidth: 460 },
   notice: {
-    display: "grid",
     inset: 0,
     padding: space.s5,
     placeItems: "center",
+    display: "grid",
     position: "absolute",
   },
   place: (x: number, y: number, width: number, height: number) => ({
@@ -39,18 +39,18 @@ const styles = stylex.create({
     width,
   }),
   skeleton: {
-    animationDuration: "1.6s",
-    animationIterationCount: "infinite",
-    animationName: {
-      "@media (prefers-reduced-motion: reduce)": "none",
-      default: shimmer,
-    },
-    animationTimingFunction: "ease-in-out",
-    backgroundColor: color.surface,
     borderColor: color.hairline,
     borderRadius: radius.panel,
     borderStyle: "solid",
     borderWidth: 1,
+    animationDuration: "1.6s",
+    animationIterationCount: "infinite",
+    animationName: {
+      default: shimmer,
+      "@media (prefers-reduced-motion: reduce)": "none",
+    },
+    animationTimingFunction: "ease-in-out",
+    backgroundColor: color.surface,
     position: "absolute",
   },
 });

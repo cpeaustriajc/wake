@@ -70,3 +70,13 @@ export const pollsSpent = m.end(
   "Three polls have passed and the last read finished",
   (s) => s.polls === 3 && s.cycle === "waiting"
 );
+
+export const view = m.view(Fleet, {
+  state: (s) => `${s.status}, ${s.cycle}, ${s.shownAgents} shown`,
+  step: {
+    daemonChanges: "daemon changes",
+    poll: "poll",
+    readDone: "read done",
+  },
+  title: "Fleet",
+});

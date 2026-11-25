@@ -70,3 +70,15 @@ export const onTheFloor = m.end(
   "The floor shows and matches the daemon",
   (s) => s.navigation === "floor"
 );
+
+export const view = m.view(Navigation, {
+  state: (s) => `${s.navigation}`,
+  step: {
+    agentJoins: "agent joins",
+    agentLeaves: "agent leaves",
+    fleetRead: "fleet.read",
+    workspaceClose: "workspace.close",
+    workspaceOpen: "workspace.open",
+  },
+  title: "Navigation",
+});

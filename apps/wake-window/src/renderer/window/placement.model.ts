@@ -193,3 +193,20 @@ export const nothingInFlight = m.end(
   "No gesture is under way and no place is queued or being sent",
   (s) => s.gesture !== "pressing" && s.gesture !== "dragging" && !s.queued
 );
+
+export const view = m.view(Placement, {
+  state: (s) => `${s.gesture}, ${s.save}`,
+  step: {
+    fleetRead: "fleet.read",
+    pointerMove: "pointer.move",
+    pointerRelease: "pointer.release",
+    saveDaemonDown: "daemon down",
+    savePlaced: "placed",
+    saveRefused: "refused",
+    saveStarts: "save starts",
+    tileClick: "tile.click",
+    tileNudge: "tile.nudge",
+    tilePress: "tile.press",
+  },
+  title: "Placement",
+});

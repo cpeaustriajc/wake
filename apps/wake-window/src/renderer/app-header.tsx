@@ -14,16 +14,16 @@ const plurals = new Intl.PluralRules("en");
 
 const styles = stylex.create({
   header: {
-    alignItems: "center",
-    backgroundColor: color.surface,
-    borderBottomColor: color.hairline,
-    borderBottomStyle: "solid",
-    borderBottomWidth: 1,
-    display: "flex",
-    flexWrap: "wrap",
     gap: space.s3,
     paddingBlock: 10,
     paddingInline: space.s5,
+    alignItems: "center",
+    backgroundColor: color.surface,
+    display: "flex",
+    flexWrap: "wrap",
+    borderBottomColor: color.hairline,
+    borderBottomStyle: "solid",
+    borderBottomWidth: 1,
   },
   spacer: { flexGrow: 1 },
   title: {
