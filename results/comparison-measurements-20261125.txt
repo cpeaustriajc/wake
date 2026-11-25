@@ -1,0 +1,135 @@
+machine: Apple M4, 10 cores, 32 GB; rustc 1.100.0; Xcode 27.2; measured 2026-11-25
+GPUI = package wake-window at the locked Zed commit 2b248e6; Rune = spikes/rune-fleet at commit 5a6ae9dc
+
+$ printf '[advisories]
+yanked = "deny"
+' > /tmp/no-ignore.toml
+
+$ cargo tree -p wake-window --locked --target all -e normal,build --prefix none | sort -u | grep -o '(https[^?#)]*' | sort | uniq -c
+  19 (https://github.com/gfx-rs/wgpu
+   1 (https://github.com/zed-industries/font-kit
+   1 (https://github.com/zed-industries/oo7
+   2 (https://github.com/zed-industries/wasm_thread
+  26 (https://github.com/zed-industries/zed
+
+$ cd spikes/rune-fleet && cargo tree --locked --target all -e normal,build --prefix none | sort -u | grep -o '(https[^?#)]*' | sort | uniq -c
+  30 (https://github.com/anomalyco/rune
+
+$ cargo tree -p wake-window --locked --target aarch64-apple-darwin -e normal,build --prefix none | sort -u | grep -o '(https[^?#)]*' | sort | uniq -c
+   1 (https://github.com/zed-industries/font-kit
+  19 (https://github.com/zed-industries/zed
+
+$ cd spikes/rune-fleet && cargo tree --locked --target aarch64-apple-darwin -e normal,build --prefix none | sort -u | grep -o '(https[^?#)]*' | sort | uniq -c
+  26 (https://github.com/anomalyco/rune
+
+$ grep -c '^source = "git+' Cargo.lock
+37
+
+$ grep -B1 -A3 'name = "zed-scap"' Cargo.lock | head -5
+[[package]]
+name = "zed-scap"
+version = "0.0.8-zed"
+source = "git+https://github.com/zed-industries/scap?rev=b5c86ec58dd4b6b7732bf6ac8be03d6b1f190a82#b5c86ec58dd4b6b7732bf6ac8be03d6b1f190a82"
+dependencies = [
+
+$ grep -n 'screen-capture' ~/.cargo/git/checkouts/zed-*/2b248e6/crates/gpui/Cargo.toml | head -3
+45:screen-capture = [
+
+$ grep -c '^\[patch' Cargo.toml
+0
+
+$ awk '/^\[patch.crates-io\]/{f=1;next} /^\[/{f=0} f&&NF' spikes/rune-fleet/Cargo.toml | wc -l
+       8
+
+$ cargo tree -p wake-window --locked --target aarch64-apple-darwin -e normal,build --prefix none | sort -u | wc -l
+     402
+
+$ cd spikes/rune-fleet && cargo tree --locked --target aarch64-apple-darwin -e normal,build --prefix none | sort -u | wc -l
+     301
+
+$ cargo tree -p wake-window --locked --target all -e normal,build --prefix none | sort -u | wc -l
+     692
+
+$ cd spikes/rune-fleet && cargo tree --locked --target all -e normal,build --prefix none | sort -u | wc -l
+     565
+
+$ cargo deny --config /tmp/no-ignore.toml check advisories 2>&1 | grep -E '^error\['
+error[unmaintained]: `ttf-parser` is unmaintained
+error[unmaintained]: `rustybuzz` is unmaintained
+error[unmaintained]: `zvariant` is unmaintained
+error[unmaintained]: `zbus_names` is unmaintained
+error[unmaintained]: `zvariant_derive` is unmaintained
+error[unmaintained]: chrono is unmaintained
+
+$ cargo deny --manifest-path spikes/rune-fleet/Cargo.toml --config /tmp/no-ignore.toml check advisories 2>&1 | grep -E '^error\['
+error[unmaintained]: `zvariant` is unmaintained
+error[unmaintained]: `zbus_names` is unmaintained
+error[unmaintained]: `zvariant_derive` is unmaintained
+
+$ cargo deny check 2>&1 | tail -1
+advisories ok, bans ok, licenses ok, sources ok
+
+$ cargo deny --manifest-path spikes/rune-fleet/Cargo.toml --config deny.toml check 2>&1 | tail -1
+advisories ok, bans ok, licenses FAILED, sources FAILED
+
+$ cargo deny --manifest-path spikes/rune-fleet/Cargo.toml --config deny.toml check 2>&1 | grep -E '^(error|warning)\[' | sort | uniq -c | grep -E 'error|unmatched|advisory-not'
+   3 error[rejected]: failed to satisfy license requirements
+  21 error[source-not-allowed]: detected 'git' source not explicitly allowed
+   3 warning[advisory-not-detected]: advisory was not encountered
+   1 warning[duplicate]: found 2 duplicate entries for crate 'thiserror'
+   1 warning[duplicate]: found 2 duplicate entries for crate 'thiserror-impl'
+   5 warning[unmatched-source]: allowed source was not encountered
+
+$ cargo deny --manifest-path spikes/rune-fleet/Cargo.toml --config deny.toml check licenses 2>&1 | grep -E 'license = |^error|└── '
+error[rejected]: failed to satisfy license requirements
+35 │ license = "Apache-2.0 WITH LLVM-exception"
+     └── (build) psm v0.1.32
+         └── stacker v0.1.25
+             └── rune-taffy v0.0.1
+                 └── rune v0.0.1
+                     └── rune-kit v0.0.1
+                         └── rune-fleet v0.1.0 (*)
+error[rejected]: failed to satisfy license requirements
+37 │ license = "BSL-1.0"
+     └── arboard v3.7.0
+         └── rune v0.0.1
+             └── rune-kit v0.0.1
+                 └── rune-fleet v0.1.0 (*)
+error[rejected]: failed to satisfy license requirements
+31 │ license = "BSL-1.0"
+     └── clipboard-win v5.4.3
+         └── arboard v3.7.0
+             └── rune v0.0.1
+                 └── rune-kit v0.0.1
+                     └── rune-fleet v0.1.0 (*)
+
+$ cargo deny list --format json 2>/dev/null | python3 -I -c "import json,sys;[print(l,[p.split()[0] for p in k][:4]) for l,k in json.load(sys.stdin)['licenses'] if l in ('BSL-1.0','Apache-2.0 WITH LLVM-exception')]"
+Apache-2.0 WITH LLVM-exception ['linux-raw-sys', 'rustix', 'wasip2', 'wit-bindgen']
+BSL-1.0 ['ryu']
+
+$ wc -l apps/wake-window/src/bin/fleet_spike.rs spikes/rune-fleet/src/main.rs
+     247 apps/wake-window/src/bin/fleet_spike.rs
+     197 spikes/rune-fleet/src/main.rs
+     444 total
+
+$ grep -c . apps/wake-window/src/bin/fleet_spike.rs spikes/rune-fleet/src/main.rs
+apps/wake-window/src/bin/fleet_spike.rs:230
+spikes/rune-fleet/src/main.rs:181
+
+$ cargo clippy -p wake-window --all-targets --locked -- -D warnings 2>&1 | tail -1
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 15.83s
+
+$ cd spikes/rune-fleet && cargo clippy --all-targets --locked -- -D warnings 2>&1 | tail -1
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 21.89s
+
+== clean builds, 2 runs each, git sources already cached; other sessions were using the CPU (load average about 12 to 21), so wall time is noisy and user CPU time is the steadier figure
+$ cd spikes/rune-fleet && cargo clean && cargo build --locked
+   run 0: 1m 25.6s wall, 268.4s user   (cargo clean removed 2.4GiB)
+   run 1: 1m 16.5s wall, 272.3s user
+   run 2: 43.1s wall, 238.8s user
+$ cargo clean && cargo build -p wake-window --locked --bin fleet_spike
+   run 0: 1m 05.5s wall, 259.7s user   (cargo clean removed 2.1GiB)
+   run 1: 35.5s wall, 221.4s user
+   run 2: 34.3s wall, 222.5s user
+
+== Metal Toolchain: GPUI's build failed at first (results/gpui-build-failure-20261125.txt); the owner approved xcodebuild -downloadComponent MetalToolchain (838.9 MB); the first attempt failed fetching the catalog, the second worked. The Rune build succeeded before and without it.
