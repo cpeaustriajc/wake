@@ -1,0 +1,19 @@
+{
+  "attempt": "t12-a2-cloud-piped-stdio",
+  "notes": "claude --cloud with a task description, stdin /dev/null and stdout piped (what a daemon spawn without a pseudo-terminal sees)",
+  "claude_version": "2.1.331 (Claude Code)",
+  "started": "2026-11-24T16:28:54Z",
+  "ended": "2026-11-24T16:28:54Z",
+  "command": [
+    "claude",
+    "--cloud",
+    "Create the branch claude/t12-throwaway-NN from main, add the empty file .wake/t12-NN.txt, commit it, push the branch, and stop. Open no pull request."
+  ],
+  "environment": "cleared except HOME PATH USER LANG TERM",
+  "stdin": "/dev/null",
+  "stdout_is_pipe": true,
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "Error: --cloud requires an interactive terminal.\nNon-interactive runs (piped stdout, --init-only, --sdk-url) run locally and would silently ignore --cloud. Drop --cloud, or run in an interactive terminal.\n",
+  "cloud_session_started": false
+}

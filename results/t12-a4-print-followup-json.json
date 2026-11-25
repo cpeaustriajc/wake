@@ -1,0 +1,25 @@
+{
+  "attempt": "t12-a4-print-followup-json",
+  "notes": "documented follow-up to the session created by attempt b1, with JSON output; queues a message and does not start a new session",
+  "claude_version": "2.1.331 (Claude Code)",
+  "started": "2026-11-24T16:29:27Z",
+  "ended": "2026-11-24T16:29:30Z",
+  "command": [
+    "claude",
+    "-p",
+    "--output-format",
+    "json",
+    "--cloud",
+    "session_01MmcCfZeF5BzXU7Sfp8NLer",
+    "Nothing more to do beyond the earlier task. If you already pushed the branch, reply done and stop."
+  ],
+  "environment": "cleared except HOME PATH USER LANG TERM",
+  "stdin": "/dev/null",
+  "stdout_is_pipe": true,
+  "exit_code": 0,
+  "stdout": "{\"ok\":true,\"session_id\":\"session_01MmcCfZeF5BzXU7Sfp8NLer\",\"url\":\"https://claude.ai/code/session_01MmcCfZeF5BzXU7Sfp8NLer?from=cli&m=0\"}\n",
+  "stderr": "",
+  "cloud_session_started": false,
+  "target_session": "session_01MmcCfZeF5BzXU7Sfp8NLer",
+  "sent_to_existing_session": true
+}
