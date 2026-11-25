@@ -62,6 +62,16 @@ fn reads_the_clone_while_the_variables_point_at_the_decoy() {
     let expected = std::env::var(COMMIT_VARIABLE).expect("commit id");
     let progress = read_progress(&clone, "origin", "main").expect("progress is read");
     assert_eq!(progress.commit, expected, "the commit came from the clone");
+    fs::write(clone.join("CHANGE"), "change\n").expect("write change");
+    git(&clone, &["add", "."]);
+    git(&clone, &["commit", "-m", "change"]);
+    git(&clone, &["push", "origin", "HEAD:refs/heads/pushed"]);
+    let head = git(&clone, &["rev-parse", "HEAD"]);
+    let listed = git(&clone, &["ls-remote", "origin", "refs/heads/pushed"]);
+    assert!(
+        listed.starts_with(&head),
+        "the push reached the clone's remote"
+    );
 }
 
 #[test]

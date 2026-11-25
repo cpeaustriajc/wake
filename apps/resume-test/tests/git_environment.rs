@@ -62,6 +62,22 @@ fn builds_the_scratch_repository_while_the_variables_point_at_the_decoy() {
         folder.join(".git").is_dir(),
         "the scratch repository has its own .git"
     );
+    let parent = folder.parent().expect("parent folder");
+    git(parent, &["init", "--bare", "scratch-remote.git"]);
+    git(
+        &folder,
+        &["remote", "add", "origin", "../scratch-remote.git"],
+    );
+    fs::write(folder.join("CHANGE"), "change\n").expect("write change");
+    git(&folder, &["add", "."]);
+    git(&folder, &["commit", "-m", "change"]);
+    git(&folder, &["push", "origin", "HEAD:refs/heads/pushed"]);
+    let head = git(&folder, &["rev-parse", "HEAD"]);
+    let listed = git(&folder, &["ls-remote", "origin", "refs/heads/pushed"]);
+    assert!(
+        listed.starts_with(&head),
+        "the push reached the scratch remote"
+    );
 }
 
 #[test]
