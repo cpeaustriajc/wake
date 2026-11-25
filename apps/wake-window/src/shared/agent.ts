@@ -18,12 +18,17 @@ type AgentPlace =
   | { readonly location: "cloud"; readonly branch: string }
   | { readonly location: "local" };
 
+type FloorSpot =
+  | { readonly placed: false }
+  | { readonly placed: true; readonly left: number; readonly top: number };
+
 interface AgentEntry {
   readonly id: number;
   readonly folder: string;
   readonly place: AgentPlace;
   readonly startedAt: number;
   readonly progress: AgentProgress;
+  readonly spot: FloorSpot;
 }
 
 const NO_REASON = "no reason given";
@@ -71,16 +76,44 @@ const decodePlace = (entry: JsonRecord): Outcome<AgentPlace> => {
   return failure("an agent is neither local nor a cloud task with a branch");
 };
 
-const decodeSituation = (entry: JsonRecord): Outcome<Pick<AgentEntry, "place" | "progress">> => {
+const decodeSpot = (position: unknown): Outcome<FloorSpot> => {
+  if (position === null || typeof position === "undefined") {
+    return success({ placed: false });
+  }
+  if (!isRecord(position)) {
+    return failure("an agent's position is not an object");
+  }
+  const { x: left, y: top } = position;
+  if (typeof left !== "number" || typeof top !== "number") {
+    return failure("an agent's position lacks x or y");
+  }
+  return success({ left, placed: true, top });
+};
+
+const decodeWhereabouts = (entry: JsonRecord): Outcome<Pick<AgentEntry, "place" | "spot">> => {
   const place = decodePlace(entry);
   if (!place.ok) {
     return place;
+  }
+  const spot = decodeSpot(entry["position"]);
+  if (!spot.ok) {
+    return spot;
+  }
+  return success({ place: place.value, spot: spot.value });
+};
+
+const decodeSituation = (
+  entry: JsonRecord,
+): Outcome<Pick<AgentEntry, "place" | "progress" | "spot">> => {
+  const whereabouts = decodeWhereabouts(entry);
+  if (!whereabouts.ok) {
+    return whereabouts;
   }
   const progress = decodeProgress(entry["progress"]);
   if (!progress.ok) {
     return progress;
   }
-  return success({ place: place.value, progress: progress.value });
+  return success({ ...whereabouts.value, progress: progress.value });
 };
 
 const decodeAgent = (entry: unknown): Outcome<AgentEntry> => {
@@ -114,4 +147,4 @@ const decodeAgents = (result: unknown): Outcome<readonly AgentEntry[]> => {
 };
 
 export { decodeAgents };
-export type { AgentEntry, AgentPlace, AgentProgress };
+export type { AgentEntry, AgentPlace, AgentProgress, FloorSpot };

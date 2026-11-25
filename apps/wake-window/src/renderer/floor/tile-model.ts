@@ -1,16 +1,18 @@
-import type { AgentEntry, AgentProgress } from "#/shared/agent.ts";
+import type { AgentEntry, AgentProgress, FloorSpot } from "#/shared/agent.ts";
 
 type LampTone = "action" | "danger" | "idle" | "success" | "warning";
 
 interface Tile {
-  readonly cloud: boolean;
   readonly folder: string;
   readonly headline: string;
+  readonly id: number;
   readonly key: string;
   readonly lamp: LampTone;
   readonly live: boolean;
+  readonly location: "cloud" | "local";
   readonly note: string;
   readonly place: string;
+  readonly spot: FloorSpot;
   readonly status: string;
   readonly when: string;
 }
@@ -72,10 +74,20 @@ const signalOf = (progress: AgentProgress): Signal => {
     return foundSignal(progress.headline, progress.phase);
   }
   if (progress.state === "invalid") {
-    return { headline: "Invalid progress file", lamp: "danger", live: false, status: "Invalid file" };
+    return {
+      headline: "Invalid progress file",
+      lamp: "danger",
+      live: false,
+      status: "Invalid file",
+    };
   }
   if (progress.state === "unreachable") {
-    return { headline: "Cannot read the remote", lamp: "warning", live: false, status: "Unreachable" };
+    return {
+      headline: "Cannot read the remote",
+      lamp: "warning",
+      live: false,
+      status: "Unreachable",
+    };
   }
   if (progress.state === "unrecognized") {
     return { headline: "Unknown progress state", lamp: "idle", live: false, status: progress.name };
@@ -98,16 +110,20 @@ const updatedOf = (progress: AgentProgress, now: number): string => {
 };
 
 const tileOf = (agent: AgentEntry, now: number): Tile => {
+  const { folder, id, place, spot } = agent;
   const shared = {
     ...signalOf(agent.progress),
-    folder: agent.folder,
+    folder,
+    id,
+    location: place.location,
     note: noteOf(agent),
+    spot,
     when: updatedOf(agent.progress, now),
   };
-  if (agent.place.location === "cloud") {
-    return { ...shared, cloud: true, key: `c${agent.id}`, place: `Cloud, branch ${agent.place.branch}` };
+  if (place.location === "cloud") {
+    return { ...shared, key: `c${id}`, place: `Cloud, branch ${place.branch}` };
   }
-  return { ...shared, cloud: false, key: `a${agent.id}`, place: "Local" };
+  return { ...shared, key: `a${id}`, place: "Local" };
 };
 
 const tilesOf = (agents: readonly AgentEntry[], now: number): readonly Tile[] =>

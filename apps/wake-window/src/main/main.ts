@@ -1,11 +1,10 @@
 import { BrowserWindow, app, ipcMain } from "electron";
-import { LIST_AGENTS_CHANNEL } from "#/shared/bridge.ts";
-import { askDaemon } from "#/main/daemon-client.ts";
+import { LIST_AGENTS_CHANNEL, PLACE_ON_FLOOR_CHANNEL } from "#/shared/bridge.ts";
+import { listAgents, placeOnFloor } from "#/main/daemon-pipe.ts";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { socketPathOf } from "#/main/socket-path.ts";
 
-const LIST_AGENTS_METHOD = "agent.list";
 const MINIMUM_HEIGHT = 480;
 const MINIMUM_WIDTH = 640;
 const PRELOAD_FILE = "../preload/preload.cjs";
@@ -48,7 +47,11 @@ const openWindow = async (): Promise<void> => {
 };
 
 ipcMain.handle(LIST_AGENTS_CHANNEL, async () => {
-  const answer = await askDaemon(socketPath, LIST_AGENTS_METHOD, {});
+  const answer = await listAgents(socketPath);
+  return answer;
+});
+ipcMain.handle(PLACE_ON_FLOOR_CHANNEL, async (_event, wire: unknown) => {
+  const answer = await placeOnFloor(socketPath, wire);
   return answer;
 });
 app.on("window-all-closed", () => {

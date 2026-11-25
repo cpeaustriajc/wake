@@ -10,23 +10,27 @@ interface MachineTileProperties {
   readonly onGrab: (key: string, clientX: number, clientY: number) => void;
   readonly onNudge: (key: string, stepsX: number, stepsY: number) => void;
   readonly onOpen: (key: string) => void;
-  readonly onRelease: () => void;
+  readonly onRelease: (key: string) => void;
   readonly position: Position;
   readonly tile: Tile;
 }
 
+const AHEAD = 1;
+const BACK = -1;
+const STAY = 0;
+
 const NUDGES: Readonly<Record<string, readonly [number, number]>> = {
-  ArrowDown: [0, 1],
-  ArrowLeft: [-1, 0],
-  ArrowRight: [1, 0],
-  ArrowUp: [0, -1],
+  ArrowDown: [STAY, AHEAD],
+  ArrowLeft: [BACK, STAY],
+  ArrowRight: [AHEAD, STAY],
+  ArrowUp: [STAY, BACK],
 };
 
 const MachineTile = (properties: MachineTileProperties): JSX.Element => (
   <button
     type="button"
     class="wk-tile"
-    style={{ left: `${properties.position.x}px`, top: `${properties.position.y}px` }}
+    style={{ left: `${properties.position.left}px`, top: `${properties.position.top}px` }}
     aria-label={`${properties.tile.key}, ${properties.tile.headline}, ${properties.tile.status}, ${properties.tile.place}`}
     aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight"
     onClick={() => {
@@ -40,10 +44,10 @@ const MachineTile = (properties: MachineTileProperties): JSX.Element => (
       properties.onDrag(event.clientX, event.clientY);
     }}
     onPointerUp={() => {
-      properties.onRelease();
+      properties.onRelease(properties.tile.key);
     }}
     onPointerCancel={() => {
-      properties.onRelease();
+      properties.onRelease(properties.tile.key);
     }}
     onKeyDown={(event) => {
       const nudge = NUDGES[event.key];
@@ -57,7 +61,7 @@ const MachineTile = (properties: MachineTileProperties): JSX.Element => (
       <span class="wk-tile__who">
         <Lamp tone={properties.tile.lamp} live={properties.tile.live} />
         <span class="wk-id">{properties.tile.key}</span>
-        <Show when={properties.tile.cloud}>
+        <Show when={properties.tile.location === "cloud"}>
           <CloudIcon />
         </Show>
       </span>

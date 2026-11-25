@@ -1,8 +1,8 @@
 {
   "name": "wake-window",
   "version": "0.1.0",
-  "description": "Wake desktop window: a viewer of the Rust daemon, built on Electron and SolidJS",
   "private": true,
+  "description": "Wake desktop window: a viewer of the Rust daemon, built on Electron and SolidJS",
   "license": "AGPL-3.0-or-later",
   "repository": "https://github.com/cpeaustriajc/wake",
   "type": "module",

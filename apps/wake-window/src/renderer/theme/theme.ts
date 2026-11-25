@@ -20,7 +20,7 @@ const createTheme = (): ThemeControl => {
       setSystemDark(media.matches);
     };
     media.addEventListener("change", follow);
-    return () => {
+    return (): void => {
       media.removeEventListener("change", follow);
     };
   });

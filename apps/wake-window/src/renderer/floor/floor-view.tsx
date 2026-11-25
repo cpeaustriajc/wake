@@ -1,88 +1,62 @@
-import type { Grip, Layout, Position } from "#/renderer/floor/floor-model.ts";
-import {
-  GRID_STEP,
-  draggedTo,
-  extentOf,
-  movedBy,
-  positionOf,
-  pulledPast,
-} from "#/renderer/floor/floor-model.ts";
+import { FloorNotice, PlaceAlert } from "#/renderer/floor/floor-notice.tsx";
+import { extentOf, positionOf } from "#/renderer/floor/floor-model.ts";
+import type { FleetReading } from "#/shared/fleet-reading.ts";
 import { For } from "solid-js";
 import type { JSX } from "@solidjs/web";
 import { MachineTile } from "#/renderer/floor/machine-tile.tsx";
 import { Minimap } from "#/renderer/floor/minimap.tsx";
+import type { Placing } from "#/renderer/floor/floor-placing.ts";
+import type { Position } from "#/renderer/floor/floor-model.ts";
 import type { Tile } from "#/renderer/floor/tile-model.ts";
+import { createFloorGrip } from "#/renderer/floor/floor-grip.ts";
 
 interface FloorViewProperties {
-  readonly children: JSX.Element;
-  readonly layout: Layout;
-  readonly onMove: (key: string, position: Position) => void;
   readonly onOpen: (key: string) => void;
+  readonly placing: Placing;
+  readonly reading: FleetReading;
   readonly tiles: readonly Tile[];
 }
 
-interface Hold {
-  readonly grip: Grip;
-  readonly moved: boolean;
-}
-
 const FloorView = (properties: FloorViewProperties): JSX.Element => {
-  let holds: readonly Hold[] = [];
-  let justMoved = false;
+  const { drop, failures, layout, move } = properties.placing;
+  const grip = createFloorGrip({
+    layout,
+    onDrop: drop,
+    onMove: move,
+    onOpen: (key) => {
+      properties.onOpen(key);
+    },
+  });
   const extent = (): Position =>
-    extentOf(properties.tiles.map((tile) => positionOf(properties.layout, tile.key)));
-  const grab = (key: string, startX: number, startY: number): void => {
-    const origin = positionOf(properties.layout, key);
-    holds = [{ grip: { key, origin, startX, startY }, moved: false }];
-    justMoved = false;
-  };
-  const drag = (clientX: number, clientY: number): void => {
-    for (const hold of holds) {
-      if (hold.moved || pulledPast(hold.grip, clientX, clientY)) {
-        holds = [{ grip: hold.grip, moved: true }];
-        properties.onMove(hold.grip.key, draggedTo(hold.grip, clientX, clientY));
-      }
-    }
-  };
-  const release = (): void => {
-    justMoved = holds.some((hold) => hold.moved);
-    holds = [];
-  };
-  const open = (key: string): void => {
-    if (justMoved) {
-      justMoved = false;
-      return;
-    }
-    properties.onOpen(key);
-  };
-  const nudge = (key: string, stepsX: number, stepsY: number): void => {
-    const from = positionOf(properties.layout, key);
-    properties.onMove(key, movedBy(from, stepsX * GRID_STEP, stepsY * GRID_STEP));
-  };
+    extentOf(properties.tiles.map((tile) => positionOf(layout(), tile.key)));
   return (
     <div class="wk-floor-frame">
       <div class="wk-floor">
         <span
           class="wk-floor__extent"
-          style={{ height: `${extent().y}px`, width: `${extent().x}px` }}
+          style={{ height: `${extent().top}px`, width: `${extent().left}px` }}
           aria-hidden="true"
         />
-        <For each={properties.tiles} keyed={(tile) => tile.key}>
+        <For
+          each={properties.tiles}
+          keyed={(tile) => tile.key}
+          fallback={<FloorNotice reading={properties.reading} />}
+        >
           {(tile) => (
             <MachineTile
               tile={tile()}
-              position={positionOf(properties.layout, tile().key)}
-              onGrab={grab}
-              onDrag={drag}
-              onRelease={release}
-              onOpen={open}
-              onNudge={nudge}
+              position={positionOf(layout(), tile().key)}
+              onGrab={grip.grab}
+              onDrag={grip.drag}
+              onRelease={grip.release}
+              onOpen={grip.open}
+              onNudge={grip.nudge}
             />
           )}
         </For>
-        {properties.children}
       </div>
-      <Minimap tiles={properties.tiles} layout={properties.layout} />
+      <PlaceAlert failures={failures()} />
+      <Minimap tiles={properties.tiles} layout={layout()} />
     </div>
   );
 };

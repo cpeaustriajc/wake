@@ -1,18 +1,7 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": [
-    "eslint",
-    "typescript",
-    "unicorn",
-    "oxc",
-    "import",
-    "jsx-a11y",
-    "promise",
-    "node"
-  ],
-  "jsPlugins": [
-    "eslint-plugin-no-comments"
-  ],
+  "plugins": ["eslint", "typescript", "unicorn", "oxc", "import", "jsx-a11y", "promise", "node"],
+  "jsPlugins": ["eslint-plugin-no-comments"],
   "categories": {
     "correctness": "error",
     "suspicious": "error",
@@ -27,10 +16,7 @@
     "reportUnusedDisableDirectives": "error",
     "respectEslintDisableDirectives": false
   },
-  "ignorePatterns": [
-    "src/renderer/keel/**",
-    "out/**"
-  ],
+  "ignorePatterns": ["src/renderer/keel/**", "out/**"],
   "rules": {
     "no-comments/disallowComments": "error",
     "unicorn/filename-case": [
@@ -73,33 +59,30 @@
           }
         ]
       }
+    ],
+    "import/no-unassigned-import": [
+      "error",
+      {
+        "allow": ["**/*.css"]
+      }
     ]
   },
   "overrides": [
     {
-      "files": [
-        "electron.vite.config.ts",
-        "vitest.config.ts"
-      ],
+      "files": ["electron.vite.config.ts", "vitest.config.ts"],
       "rules": {
         "import/no-default-export": "off"
       }
     },
     {
-      "files": [
-        "tests/**"
-      ],
-      "plugins": [
-        "vitest"
-      ],
+      "files": ["tests/**"],
+      "plugins": ["vitest"],
       "rules": {
         "import/no-nodejs-modules": "off"
       }
     },
     {
-      "files": [
-        "src/main/**"
-      ],
+      "files": ["src/main/**"],
       "rules": {
         "import/no-nodejs-modules": "off",
         "no-restricted-globals": [
@@ -138,18 +121,14 @@
       }
     },
     {
-      "files": [
-        "src/main/main.ts"
-      ],
+      "files": ["src/main/main.ts"],
       "rules": {
         "node/no-process-env": "off",
         "node/no-top-level-await": "off"
       }
     },
     {
-      "files": [
-        "src/preload/**"
-      ],
+      "files": ["src/preload/**"],
       "rules": {
         "no-restricted-globals": [
           "error",
@@ -199,9 +178,7 @@
       }
     },
     {
-      "files": [
-        "src/renderer/**"
-      ],
+      "files": ["src/renderer/**"],
       "rules": {
         "no-restricted-globals": [
           "error",
@@ -243,9 +220,7 @@
       }
     },
     {
-      "files": [
-        "src/renderer/**/*-model.ts"
-      ],
+      "files": ["src/renderer/**/*-model.ts"],
       "rules": {
         "no-restricted-globals": [
           "error",
@@ -304,9 +279,7 @@
       }
     },
     {
-      "files": [
-        "src/shared/**"
-      ],
+      "files": ["src/shared/**"],
       "rules": {
         "no-restricted-globals": [
           "error",
@@ -340,6 +313,12 @@
                 "message": "src/shared imports only src/shared."
               }
             ]
+          }
+        ],
+        "eslint/id-length": [
+          "error",
+          {
+            "exceptions": ["x", "y"]
           }
         ]
       }

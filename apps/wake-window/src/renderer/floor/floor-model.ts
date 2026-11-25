@@ -1,9 +1,16 @@
+import type { FloorSpot } from "#/shared/agent.ts";
+
 interface Position {
   readonly left: number;
   readonly top: number;
 }
 
 type Layout = Readonly<Record<string, Position>>;
+
+interface Machine {
+  readonly key: string;
+  readonly spot: FloorSpot;
+}
 
 interface Mark {
   readonly height: number;
@@ -53,8 +60,14 @@ const slotAt = (index: number): Position => ({
   top: ORIGIN + Math.floor(index / COLUMNS) * PITCH_TOP,
 });
 
+const firstSlots = (count: number): readonly Position[] =>
+  [...Array.from({ length: count }).keys()].map((index) => slotAt(index));
+
 const overlaps = (one: Position, other: Position): boolean =>
   Math.abs(one.left - other.left) < MACHINE_WIDTH && Math.abs(one.top - other.top) < MACHINE_HEIGHT;
+
+const samePosition = (one: Position, other: Position): boolean =>
+  one.left === other.left && one.top === other.top;
 
 const freeSlotFrom = (index: number, taken: readonly Position[]): Position => {
   const slot = slotAt(index);
@@ -78,6 +91,42 @@ const placedAll = (layout: Layout, keys: readonly string[]): Layout => {
   return Object.fromEntries(placed);
 };
 
+const daemonPosition = (machine: Machine): readonly Position[] => {
+  if (!machine.spot.placed) {
+    return [];
+  }
+  return [{ left: machine.spot.left, top: machine.spot.top }];
+};
+
+const daemonLayout = (machines: readonly Machine[]): Layout =>
+  Object.fromEntries(
+    machines.flatMap((machine) =>
+      daemonPosition(machine).map((position): [string, Position] => [machine.key, position]),
+    ),
+  );
+
+const shownLayout = (machines: readonly Machine[], held: Layout): Layout => {
+  const keys = machines.map((machine) => machine.key);
+  const present = Object.entries(held).filter(([key]) => keys.includes(key));
+  return placedAll({ ...daemonLayout(machines), ...Object.fromEntries(present) }, keys);
+};
+
+const unplacedKeys = (machines: readonly Machine[]): readonly string[] =>
+  machines.filter((machine) => !machine.spot.placed).map((machine) => machine.key);
+
+const stillHeld = (held: Layout, machines: readonly Machine[]): Layout => {
+  const agreed = daemonLayout(machines);
+  const keys = new Set(machines.map((machine) => machine.key));
+  const waiting = Object.entries(held).filter(([key, position]) => {
+    const settled = agreed[key];
+    return keys.has(key) && !(settled && samePosition(settled, position));
+  });
+  if (waiting.length === Object.keys(held).length) {
+    return held;
+  }
+  return Object.fromEntries(waiting);
+};
+
 const positionOf = (layout: Layout, key: string): Position => layout[key] ?? slotAt(FIRST_SLOT);
 
 const withPosition = (layout: Layout, key: string, position: Position): Layout => ({
@@ -85,45 +134,8 @@ const withPosition = (layout: Layout, key: string, position: Position): Layout =
   [key]: position,
 });
 
-const isPosition = (value: unknown): value is Position =>
-  typeof value === "object" &&
-  value !== null &&
-  "left" in value &&
-  "top" in value &&
-  Number.isFinite(value.left) &&
-  Number.isFinite(value.top);
-
-const isPlacement = (entry: readonly [string, unknown]): entry is [string, Position] => {
-  const [, value] = entry;
-  return isPosition(value);
-};
-
-const parsedLayout = (text: string): unknown => {
-  try {
-    return JSON.parse(text);
-  } catch {
-    return EMPTY_LAYOUT;
-  }
-};
-
-const decodedLayout = (text: unknown): Layout => {
-  if (typeof text !== "string") {
-    return EMPTY_LAYOUT;
-  }
-  const stored = parsedLayout(text);
-  if (typeof stored !== "object" || stored === null || Array.isArray(stored)) {
-    return EMPTY_LAYOUT;
-  }
-  const entries = Object.entries(stored);
-  if (!entries.every((entry) => isPlacement(entry))) {
-    return EMPTY_LAYOUT;
-  }
-  return Object.fromEntries(
-    entries.map(([key, { left, top }]) => [key, { left: snapped(left), top: snapped(top) }]),
-  );
-};
-
-const encodedLayout = (layout: Layout): string => JSON.stringify(layout);
+const withoutPosition = (layout: Layout, key: string): Layout =>
+  Object.fromEntries(Object.entries(layout).filter(([held]) => held !== key));
 
 const markOf = (position: Position): Mark => ({
   height: Math.round(MACHINE_HEIGHT * MAP_SCALE),
@@ -133,7 +145,8 @@ const markOf = (position: Position): Mark => ({
 });
 
 const extentOf = (positions: readonly Position[]): Position => ({
-  left: Math.max(FLOOR_EDGE, ...positions.map((position) => position.left)) + MACHINE_WIDTH + ORIGIN,
+  left:
+    Math.max(FLOOR_EDGE, ...positions.map((position) => position.left)) + MACHINE_WIDTH + ORIGIN,
   top: Math.max(FLOOR_EDGE, ...positions.map((position) => position.top)) + MACHINE_HEIGHT + ORIGIN,
 });
 
@@ -142,16 +155,17 @@ export {
   GRID_STEP,
   MACHINE_HEIGHT,
   MACHINE_WIDTH,
-  decodedLayout,
   draggedTo,
-  encodedLayout,
   extentOf,
+  firstSlots,
   markOf,
   movedBy,
-  placedAll,
   positionOf,
   pulledPast,
-  slotAt,
+  shownLayout,
+  stillHeld,
+  unplacedKeys,
   withPosition,
+  withoutPosition,
 };
-export type { Grip, Layout, Mark, Position };
+export type { Grip, Layout, Machine, Mark, Position };

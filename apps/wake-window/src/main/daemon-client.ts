@@ -44,7 +44,10 @@ const reasonOf = (error: unknown): string => {
   return "the socket failed";
 };
 
-const firstLine = async (socket: Readonly<Socket>, signal: Readonly<AbortSignal>): Promise<string> => {
+const firstLine = async (
+  socket: Readonly<Socket>,
+  signal: Readonly<AbortSignal>,
+): Promise<string> => {
   const lines = createInterface({ input: socket, signal });
   const first = await lines[Symbol.asyncIterator]().next();
   if (first.done === true) {
