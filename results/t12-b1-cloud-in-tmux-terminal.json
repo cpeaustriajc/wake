@@ -1,0 +1,25 @@
+{
+  "attempt": "t12-b1-cloud-in-tmux-terminal",
+  "notes": "claude --cloud inside a tmux terminal that Wake-like code creates (tmux new-session -d, 160x50), environment cleared except HOME PATH USER LANG TERM, working directory is the T12 worktree. No key was sent. No trust prompt appeared and nothing was accepted. The CLI printed three plain lines and exited by itself within 8 seconds.",
+  "claude_version": "2.1.331 (Claude Code)",
+  "started": "2026-11-24T16:29:06Z",
+  "command": [
+    "claude",
+    "--cloud",
+    "Create the branch claude/t12-throwaway-01 from main, add the empty file t12-01.txt, commit it, push the branch to origin, and stop. Open no pull request and merge nothing.",
+    "-n",
+    "t12-probe-01"
+  ],
+  "terminal": "tmux detached session, killed after the run",
+  "keystrokes_sent": 0,
+  "cloud_session_started": true,
+  "session": "session_01MmcCfZeF5BzXU7Sfp8NLer",
+  "session_name": "t12-probe-01",
+  "session_url": "https://claude.ai/code/session_01MmcCfZeF5BzXU7Sfp8NLer",
+  "terminal_output": "Created cloud session: t12-probe-01\nView: https://claude.ai/code/session_01MmcCfZeF5BzXU7Sfp8NLer?from=cli&m=0\nResume with: claude --teleport session_01MmcCfZeF5BzXU7Sfp8NLer\n\n",
+  "result_branch": "claude/t12-throwaway-01",
+  "result_commit": "51daec9b6cd2dd58944bf61616c74f96584cef7a",
+  "result_commit_time": "2026-11-24T16:34:31Z",
+  "branch_first_seen_on_origin": "2026-11-24T16:37:02Z",
+  "follow_up": "t12-a4 sent one message to this session at 2026-11-24T16:29:30Z"
+}

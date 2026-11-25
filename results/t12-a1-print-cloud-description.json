@@ -1,0 +1,20 @@
+{
+  "attempt": "t12-a1-print-cloud-description",
+  "notes": "claude -p --cloud with a task description, no terminal",
+  "claude_version": "2.1.331 (Claude Code)",
+  "started": "2026-11-24T16:28:44Z",
+  "ended": "2026-11-24T16:28:44Z",
+  "command": [
+    "claude",
+    "-p",
+    "--cloud",
+    "Create the branch claude/t12-throwaway-NN from main, add the empty file .wake/t12-NN.txt, commit it, push the branch, and stop. Open no pull request."
+  ],
+  "environment": "cleared except HOME PATH USER LANG TERM",
+  "stdin": "/dev/null",
+  "stdout_is_pipe": true,
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "Error: --cloud cannot be combined with --print.\nStarting a new cloud session with --cloud is interactive only: drop --print, or drop --cloud to run locally. To message an existing cloud session instead, pass its ID: `claude -p \"message\" --cloud <session-id>` (find IDs at claude.ai/code).\n",
+  "cloud_session_started": false
+}

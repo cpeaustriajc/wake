@@ -1,0 +1,21 @@
+{
+  "attempt": "t12-a3-print-environment-bogus",
+  "notes": "claude -p with --environment and an invented ID, to read the documented non-terminal path's error; no real environment exists on this account (Max plan, self-hosted environments are Team/Enterprise)",
+  "claude_version": "2.1.331 (Claude Code)",
+  "started": "2026-11-24T16:28:54Z",
+  "ended": "2026-11-24T16:28:57Z",
+  "command": [
+    "claude",
+    "-p",
+    "Create the branch claude/t12-throwaway-NN from main, add the empty file .wake/t12-NN.txt, commit it, push the branch, and stop. Open no pull request.",
+    "--environment",
+    "ccpool_0000000000"
+  ],
+  "environment": "cleared except HOME PATH USER LANG TERM",
+  "stdin": "/dev/null",
+  "stdout_is_pipe": true,
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "Error: self-hosted runners are disabled by your organization's policy\n",
+  "cloud_session_started": false
+}
