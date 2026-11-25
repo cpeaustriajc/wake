@@ -15,9 +15,10 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "format": "oxfmt",
-    "verify": "oxfmt --check && oxlint --type-aware && tsc -p tsconfig.json && vitest run && electron-vite build"
+    "verify": "oxfmt --check && effect-tsgo oxlint --type-aware && effect-tsgo tsc -p tsconfig.json && effect-tsgo tsrs -p tsconfig.json && earnest verify src && vitest run && electron-vite build"
   },
   "dependencies": {
+    "@stylexjs/stylex": "0.19.2",
     "@ui-sdk/core": "0.1.0-beta.17",
     "@ui-sdk/react": "0.1.0-beta.17",
     "@xstate/react": "6.1.0",
@@ -30,6 +31,8 @@
     "@effect/tsgo": "0.67.3",
     "@effect/vitest": "4.1.2",
     "@fast-check/vitest": "0.5.0",
+    "@stylexjs/eslint-plugin": "0.19.2",
+    "@stylexjs/unplugin": "0.19.2",
     "@types/node": "24.9.0",
     "@types/react": "19.3.2",
     "@types/react-dom": "19.3.0",
