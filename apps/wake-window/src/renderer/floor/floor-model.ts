@@ -49,6 +49,8 @@ const movedBy = (from: Position, deltaLeft: number, deltaTop: number): Position 
   top: snapped(from.top + deltaTop),
 });
 
+const stepsToPixels = (steps: number): number => steps * GRID_STEP;
+
 const pulledPast = (grip: Grip, clientX: number, clientY: number): boolean =>
   Math.abs(clientX - grip.startX) + Math.abs(clientY - grip.startY) >= DRAG_THRESHOLD;
 
@@ -152,7 +154,6 @@ const extentOf = (positions: readonly Position[]): Position => ({
 
 export {
   EMPTY_LAYOUT,
-  GRID_STEP,
   MACHINE_HEIGHT,
   MACHINE_WIDTH,
   draggedTo,
@@ -163,6 +164,7 @@ export {
   positionOf,
   pulledPast,
   shownLayout,
+  stepsToPixels,
   stillHeld,
   unplacedKeys,
   withPosition,
